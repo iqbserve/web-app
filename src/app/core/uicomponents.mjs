@@ -1,0 +1,415 @@
+/* Authored by iqbserve.de */
+
+import { UIBuilder, DefaultCompProps, onClicked, onKeyup } from 'core/uibuilder.mjs';
+import { callFeature } from 'app/wb-features.mjs';
+
+import * as Icons from 'core/icons.mjs';
+
+/**
+ * App titelbar component
+ */
+class WbTitlebar extends HTMLElement {
+    static TagName = "wb-titlebar";
+
+    #ctx = { viewManager: null, defaultProps: null };
+
+    constructor() {
+        super();
+    }
+
+    #createUI() {
+        let builder = new UIBuilder()
+            .setDefaultCompProps(this.#ctx.defaultProps)
+            .setElementCollection(this);
+
+        builder.newUICompFor(this)
+            .style({ "user-select": "none" })
+            .add("a", (logoIcon) => {
+                logoIcon.attrib({ href: "https://iqbserve.de/", target: "iqbserve.de" }).style({ "min-width": "fit-content" })
+                    .add("img", (logoIconImg) => {
+                        logoIconImg.class("wtb-item")
+                            .attrib({ src: "assets/workbench-logo.png", title: "IQB Services", alt: "logo" })
+                            .style({ width: "22px", height: "22px" });
+                    })
+            })
+            .addContainer((elem) => {
+                elem.html("Jamn Workbench -").class("wtb-item").style({ "min-width": "fit-content" });
+            })
+            .addContainer({ varid: "titleText" }, (elem) => {
+                elem.html("[ ]").class("wtb-item").style({ width: "100%", "user-select": "text" });
+            })
+            .addContainer((titleIconBar) => {
+                titleIconBar.class(["wtb-item", "wtb-ctrl-panel"])
+                    .addActionIcon({ iconName: Icons.caretup() }, (icon) => {
+                        icon.title("Backward step through views");
+                        onClicked(icon, () => { this.#ctx.viewManager?.stepViewsUp(); });
+                    })
+                    .addActionIcon({ iconName: Icons.caretdown() }, (icon) => {
+                        icon.title("Forward step through views");
+                        onClicked(icon, () => { this.#ctx.viewManager?.stepViewsDown(); });
+                    });
+            });
+    }
+
+    build(context) {
+        this.#ctx = context;
+        this.#createUI();
+        return this;
+    }
+
+    setTitleText(text) {
+        this.titleText.innerHTML = `[ ${text} ]`;
+    }
+}
+
+/**
+ * App statusline component
+ */
+class WbStatusline extends HTMLElement {
+    static TagName = "wb-statusline";
+
+    #ctx = { systemInfo: null, defaultProps: null };
+
+    constructor() {
+        super();
+    }
+
+    #createUI() {
+        let builder = new UIBuilder()
+            .setDefaultCompProps(this.#ctx.defaultProps)
+            .setElementCollection(this);
+
+        builder.newUICompFor(this)
+            .style({ "user-select": "none" })
+            .addContainer((prefixText) => {
+                prefixText.html("Info:").class("wsl-item").style({ width: "30px" });
+            })
+            .addContainer({ varid: "infoText" }, (infoText) => {
+                infoText.class("wsl-item").style({ width: "100%", "user-select": "text" });
+            })
+            .addContainer((iconBar) => {
+                iconBar.class("wsl-item").style({ width: "50px", "margin-right": "5px", "text-align": "center" })
+                    .add("a", (gitLink) => {
+                        gitLink.class(Icons.github("classes"))
+                            .attrib({ title: "Git repo", href: this.#ctx.systemInfo?.url, target: "GitHub_Repos" });
+                    });
+            });
+    }
+
+    build(context) {
+        this.#ctx = context;
+        this.#createUI();
+        return this;
+    }
+
+    setInfoText(text) {
+        this.infoText.innerHTML = text;
+    }
+}
+
+/**
+ * App sidebar component
+ */
+class WbSidebar extends HTMLElement {
+    static TagName = "wb-sidebar";
+
+    #ctx = { viewManager: null, appConfig: null };
+    #elem = {};
+
+    constructor() {
+        super();
+    }
+
+    #createUI() {
+        let builder = new UIBuilder()
+            .setElementCollection(this.#elem)
+            .setDefaultCompProps(new DefaultCompProps());
+
+        builder.newUICompFor(this)
+            .addContainer({ varid: "header", clazzes: "sidebar-header" }, (header) => {
+                header.addActionIcon({ varid: "menuIcon", iconName: Icons.menu() }, (menuIcon) => {
+                    menuIcon.title("Show/Hide sidebar menu").class("sidebar-header-icon");
+                    onClicked(menuIcon, (evt) => {
+                        this.toggleCollapse();
+                    })
+                })
+                    .addContainer({ varid: "workIconBar", clazzes: "sidebar-header-workicons" });
+            })
+            .addContainer({ varid: "body", clazzes: "sidebar-body" }, (body) => {
+                body.addContainer({ varid: "topicHead", clazzes: "sbar-topic-head" }, (topicHead) => {
+                    topicHead.addActionIcon({ iconName: Icons.gi_toggleExpand() }, (icon) => {
+                        icon.title("Expand/Collapse Topics").class("sidebar-header-icon").style({ "font-size": "14px", "margin-left": "10px" });
+                        onClicked(icon, (evt) => {
+                            this.#expandTopics(icon.domElem);
+                        });
+                    })
+                        .addTextField({ clazzes: "embedded-search-field" }, (searchField) => {
+                            searchField.style({ width: "50%", "max-width": "150px" }).attrib({ placeholder: "Filter ..." });
+                            onKeyup(searchField, (evt) => {
+                                this.#filterItems(evt.target.value);
+                            })
+                        });
+                })
+            })
+            .addList({ varid: "topicList", clazzes: "sbar-topic-list" });
+    }
+
+    #newWorkIcon(id, iconName) {
+        let elem = UIBuilder.createDomElementFrom(`<a-icon iconname="${iconName}" id="${id}" class="sidebar-header-icon"></a-icon>`);
+        return elem;
+    }
+
+    #onItemClick(evt) {
+        let name = evt.target.dataset.feature;
+        callFeature(name, this.#ctx.viewManager);
+    }
+
+    #createTopicList(topicListDef) {
+
+        let topicListElem = this.#elem.topicList;
+        let topicElem = null;
+        let itemElem = null;
+        let itemListElem = null;
+
+        topicListDef.forEach(topicDef => {
+            topicElem = this.#newTopic(topicDef.id, topicDef);
+            itemListElem = this.#newTopicList();
+            topicElem.append(itemListElem);
+            topicListElem.append(topicElem);
+
+            topicDef.items?.forEach(itemDef => {
+                itemElem = this.#newTopicItem(itemDef.id, itemDef.text, itemDef.feature);
+                itemListElem.append(itemElem);
+                onClicked(itemElem, (evt) => {
+                    this.#onItemClick(evt);
+                });
+            });
+        });
+    }
+
+    #newTopic(key, def) {
+
+        let iconClass = Icons.getIconClasses(def.icon, true);
+        let text = def.text;
+        let html = `
+        <li class="sbar-topic" name="${text}">
+            <span class="sbar-topic-header node-trigger">
+                <span class="sbar-topic-icon ${iconClass} node-trigger"></span>
+                <span class="sbar-topic-text node-trigger">${text}</span>
+            </span>
+        </li>`;
+        let elem = UIBuilder.createDomElementFrom(html);
+
+        onClicked(elem, (evt) => {
+            //prevent collapsing topic
+            if (evt.target.classList.contains("node-trigger")) {
+                let list = evt.currentTarget.lastChild;
+                if (list) {
+                    if (list.style.display == "none" || list.style.display == "") {
+                        list.style.display = "block";
+                    } else {
+                        list.style.display = "none";
+                    }
+                }
+            }
+        });
+
+        return elem;
+    }
+
+    #newTopicList() {
+        let html = `<ul class="sbar-item-list"></ul>`;
+        let list = UIBuilder.createDomElementFrom(html);
+        return list;
+    }
+
+    #newTopicItem(id, text, feature) {
+        id = id ? "id=" + id : "";
+        feature = feature ? `data-feature="${feature}"` : "";
+        let html = `<li class="sbar-item" ${id} ${feature}>${text}</li>`;
+        return UIBuilder.createDomElementFrom(html);
+    }
+
+    #expandTopics(icon) {
+        let displayVal;
+        icon.switch({
+            cb: (icon, flag) => {
+                icon.title = flag ? "Collapse Topics" : "Expand Topics";
+                displayVal = flag ? "block" : "none";
+            }
+        });
+
+        let topics = this.querySelectorAll("ul.sbar-item-list")
+        for (const list of topics) {
+            list.style.display = displayVal;
+        }
+    }
+
+    #filterItems(text = "") {
+        let filter = text.trim().toLowerCase();
+        let itemText = "";
+        let items = this.querySelectorAll("li.sbar-item")
+        let hasFilter = filter.length > 0;
+
+        if (hasFilter) {
+            this.#elem.topicHead.classList.add("topic-head-freez");
+        } else {
+            this.#elem.topicHead.classList.remove("topic-head-freez");
+        }
+
+        let showItem = (flag, item) => {
+            let topic = item.parentElement.parentElement;
+
+            item.style.display = flag ? "" : "none";
+            if (flag) {
+                //ensure items are visible - not collapsed
+                item.parentElement.style.display = "block"
+            };
+            if (item.parentElement.querySelectorAll('li:not([style*="display: none;"])').length == 0) {
+                topic.style.display = "none";
+            } else {
+                topic.style.display = "block";
+            }
+        };
+
+        for (const item of items) {
+            if (hasFilter) {
+                itemText = item.innerText.trim().toLowerCase();
+                if (itemText.includes(filter)) {
+                    showItem(true, item);
+                } else {
+                    showItem(false, item);
+                }
+            } else {
+                showItem(true, item);
+            }
+        }
+    }
+
+    #createWorkItemPanel(items) {
+        items.forEach(def => this.addHeaderWorkIcon(def));
+    }
+
+    build(context) {
+        this.#ctx = context;
+        this.#createUI();
+        this.#createTopicList(this.#ctx.appConfig.topicList);
+        this.#createWorkItemPanel(this.#ctx.appConfig.workpanelItems);
+        return this;
+    }
+
+    isCollapsed() {
+        return this.#elem.menuIcon.classList.contains("rot90");
+    }
+
+    toggleCollapse() {
+        if (this.isCollapsed()) {
+            this.#elem.topicList.style.display = "block";
+            this.#elem.body.style.display = "block";
+            this.#elem.menuIcon.classList.toggle("rot90");
+            this.style.width = "225px";
+        } else {
+            this.#elem.topicList.style.display = "none";
+            this.#elem.body.style.display = "none";
+            this.#elem.menuIcon.classList.toggle("rot90");
+            this.style.width = "50px";
+        }
+    }
+
+    /**
+     * { text: , id: , icon:  }
+     */
+    addHeaderWorkIcon(def) {
+        let icon = null;
+        let workIconBar = this.#elem.workIconBar;
+        if (def.icon) {
+            icon = this.#newWorkIcon(def.id, def.icon);
+            icon.title = def.text ? def.text : "";
+            icon.dataset.feature = def.feature ? def.feature : "";
+            workIconBar.append(icon);
+            if (icon.dataset.feature) {
+                workIconBar[icon.dataset.feature] = icon;
+            }
+
+            onClicked(icon, (evt) => {
+                this.#onItemClick(evt);
+            });
+        }
+        return icon;
+    }
+
+    getItem(featureId) {
+        return this.#elem.topicList.querySelector(`li[data-feature="${featureId.trim()}"]`);
+    }
+
+    getWorkPanelIcon(featureId) {
+        return this.#elem.workIconBar[featureId];
+    }
+}
+
+/**
+ * Action icon component
+ */
+class ActionIcon extends HTMLElement {
+    static TagName = "a-icon";
+
+    static observedAttributes = ['iconname'];
+
+    iconname = "";
+    constructor() {
+        super();
+    }
+
+    #getIconClasses() {
+        return Icons.getIconClasses(this.iconname);
+    }
+
+    #getShapeClass(idx = 0) {
+        return Icons.getIconShapeClasses(this.iconname)[idx];
+    }
+
+    attributeChangedCallback(name, oldValue, newValue) {
+        if (name === "iconname") {
+            this.iconname = newValue;
+            this.#getIconClasses().forEach(clazz => {
+                this.classList.add(clazz);
+            });
+        }
+    }
+
+    hasInitialShape() {
+        return this.classList.contains(this.#getShapeClass(0));
+    }
+
+    switch(opt = {}) {
+        opt = { flag: this.hasInitialShape(), cb: null, ...opt };
+
+        if (opt.flag) {
+            this.classList.remove(this.#getShapeClass(0));
+            this.classList.add(this.#getShapeClass(1));
+        } else {
+            this.classList.add(this.#getShapeClass(0));
+            this.classList.remove(this.#getShapeClass(1));
+        }
+        if (opt.cb) {
+            opt.cb(this, opt.flag);
+        }
+    }
+
+    setEnabled(flag) {
+        if (flag) {
+            this.style["pointer-events"] = "all";
+        } else {
+            this.style["pointer-events"] = "none";
+        }
+    }
+
+}
+
+
+export function registerUIWebComponents() {
+    customElements.define(WbTitlebar.TagName, WbTitlebar);
+    customElements.define(WbSidebar.TagName, WbSidebar);
+    customElements.define(WbStatusline.TagName, WbStatusline);
+    customElements.define(ActionIcon.TagName, ActionIcon);
+}

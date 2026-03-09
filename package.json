@@ -1,0 +1,21 @@
+{
+  "name": "jps-workbench",
+  "version": "0.0.1-SNAPSHOT",
+  "description": "Experimental Web App project",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/iqbserve/jps-workbench.git"
+  },
+  "keywords": [],
+  "bugs": {
+    "url": "https://github.com/iqbserve/jps-workbench/issues"
+  },
+  "homepage": "https://github.com/iqbserve/jps-workbench#readme",
+  "devDependencies": {
+    "typescript": "^5.9.3"
+  },
+  "scripts": {
+    "build": "tsc && node copy-assets.mjs",
+    "start": "node dist/workbench.mjs"
+  }
+}
