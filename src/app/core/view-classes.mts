@@ -25,10 +25,16 @@ export function loadServerStyleSheet(path) {
 	UIBuilder.loadServerStyleSheet(path);
 }
 
+type PropertyObject = {
+	[key: string]: any;
+}
+
 /**
  * A basic view class. 
  */
 export class AbstractView {
+	//support for dynamic properties
+	[key: string]: any;
 
 	//an automatic uid 
 	uid = new ContextId();
@@ -235,7 +241,7 @@ export class WorkView extends AbstractView {
 		this.viewHeader.showRunning(flag);
 	}
 
-	setDisabled(flag, options = {}) {
+	setDisabled(flag, options: any = {}) {
 		options = { cursor: "wait", text: "Just a moment please ...", ...options }
 		if (this.disableOverlay) {
 			this.setDisplay(this.disableOverlay, flag ? "flex" : false);
@@ -248,9 +254,11 @@ export class WorkView extends AbstractView {
 		this.viewHeader.setTitle(title);
 	}
 
-	installSidePanel(sidePanelViewElem, workareaElem = this.viewWorkarea) {
+	installSidePanel(sidePanelViewElem: HTMLElement | null, workareaElem = this.viewWorkarea): WorkViewSidepanel {
 		this.sidePanel = new WorkViewSidepanel(this, workareaElem);
-		this.sidePanel.setViewComp(sidePanelViewElem);
+		if (sidePanelViewElem) {
+			this.sidePanel.setViewComp(sidePanelViewElem);
+		}
 
 		this.viewHeader.rightIconBar((bar) => {
 			bar.addIcon({ id: "sidepanel.icon", title: "Show/Hide Sidepanel" }, Icons.wkvSidePanel(), (evt) => {
@@ -488,7 +496,8 @@ export class WorkViewHeaderMenu {
 			this.#onAnyCloseTriggerEvent(evt)
 		});
 		window.addEventListener("mousedown", (evt) => {
-			if (evt.target.classList.contains("splitter")) {
+			let elem = evt.target as HTMLElement;
+			if (elem.classList.contains("splitter")) {
 				this.#onAnyCloseTriggerEvent(evt)
 			}
 		}); // splitter
@@ -526,7 +535,7 @@ export class WorkViewHeaderMenu {
 		return this.#menuElem?.children.length > 0;
 	}
 
-	addItem(text, cb, props = {}) {
+	addItem(text, cb, props: PropertyObject = {}) {
 		let item = document.createElement("a");
 		item.href = "view: " + text;
 		item.innerHTML = text;
@@ -759,7 +768,7 @@ export class StandardDialog extends ViewDialog {
 	inputField;
 
 	constructor(parent) {
-		super("");
+		super();
 		this.parentElem = parent;
 		this.initialize();
 	}
@@ -818,7 +827,7 @@ export class StandardDialog extends ViewDialog {
 			this.viewArea.html(`<p>${text?.message}</p>`);
 		}
 
-		this.openModal();
+		this.openModal(null);
 	}
 
 	openInput(text, value, cb) {
@@ -843,7 +852,7 @@ export class StandardDialog extends ViewDialog {
 
 		this.inputField = findChildOf(this.dialog(), inputId);
 
-		this.openModal();
+		this.openModal(null);
 		this.inputField.focus();
 		this.inputField.select();
 	}
@@ -881,7 +890,7 @@ export class WorkViewTableHandler {
 				let col = document.createElement("td");
 				col.className = "wkv";
 				col.innerHTML = colVal;
-				col.value = colKey;
+				(col as any).value = colKey;
 				onClicked(col, (evt) => { this.tableData.cellClick(rowKey, colKey, evt); });
 				onDblClicked(col, (evt) => { this.tableData.cellDblClick(rowKey, colKey, evt); });
 				row.appendChild(col);
@@ -900,7 +909,7 @@ export class WorkViewTableHandler {
 		this.ascOrder = !this.ascOrder;
 		let rows = Array.from(this.tableBody.querySelectorAll('tr'));
 
-		rows.sort((rowA, rowB) => {
+		rows.sort((rowA: HTMLElement, rowB: HTMLElement) => {
 			let cellA = rowA.querySelectorAll('td')[colIdx].textContent.trim();
 			let cellB = rowB.querySelectorAll('td')[colIdx].textContent.trim();
 
@@ -919,19 +928,19 @@ export class WorkViewTableHandler {
 		let rows = Array.from(this.tableBody.querySelectorAll('tr'));
 		let filter = filterText.toLowerCase();
 
-		rows.forEach((row) => {
+		rows.forEach((row: HTMLElement) => {
 			let cellVal = row.querySelectorAll('td')[colIdx].textContent;
 			row.style.display = cellVal.toLowerCase().includes(filter) ? "" : "none";
 		});
 	}
 
-	newCellInputField(props = {}) {
+	newCellInputField(props: PropertyObject = {}) {
 		let comp = document.createElement('span');
 		let ctrl = document.createElement('input');
 
 		props = { clazz: "wkv-tblcell-edit-tf", booleanValue: null, datalist: [], ...props };
 
-		ctrl.comp = comp;
+		(ctrl as any).comp = comp;
 		ctrl.type = "text";
 		ctrl.classList.add(props.clazz ? props.clazz : "wkv-tblcell-edit-tf");
 		comp.append(ctrl);
@@ -1015,8 +1024,8 @@ export class SplitBarHandler {
 
 	clickPoint;
 
-	barrierActionBefore = (handler, value) => { };
-	barrierActionAfter = (handler, value) => { };
+	barrierActionBefore = (handler, value) => { return false; };
+	barrierActionAfter = (handler, value) => { return false; };
 
 	constructor(splitter) {
 		this.splitter = splitter;
@@ -1164,7 +1173,7 @@ export class SplitBarHandler {
 		this.compAfter.style.width = (this.clickPoint.afterWidth - delta.x) + "px";
 	}
 
-	#doHDrag(delta) {
+	#doHDrag(delta, evt) {
 		delta.y = Math.min(Math.max(delta.y, -this.clickPoint.beforeHeight),
 			this.clickPoint.afterHeight);
 
@@ -1193,7 +1202,7 @@ export class DialogDragHandler {
 	#start = { x: 0, y: 0 };
 	#startPos = { left: 0, top: 0 };
 
-	#triggerFilter = (evt) => { };
+	#triggerFilter = (evt: PointerEvent) => { return false };
 	enabled = false;
 
 	constructor(dialog, handleElem) {

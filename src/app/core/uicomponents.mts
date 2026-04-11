@@ -1,26 +1,24 @@
 /* Authored by iqbserve.de */
 
-import { UIBuilder, DefaultCompProps, onClicked, onKeyup } from 'core/uibuilder.mjs';
-import { callFeature } from 'app/wb-features.mjs';
-
+import { UIBuilder, onClicked, onKeyup } from 'core/uibuilder.mjs';
 import * as Icons from 'core/icons.mjs';
 
 /**
  * App titelbar component
  */
-class WbTitlebar extends HTMLElement {
+export class WbTitlebar extends HTMLElement {
     static TagName = "wb-titlebar";
 
-    #ctx = { viewManager: null, defaultProps: null };
+    #stepViewsDown = () => { };
+    #stepViewsUp = () => { };
+    elem: Record<string, HTMLElement> = {};
 
     constructor() {
         super();
     }
 
-    #createUI() {
-        let builder = new UIBuilder()
-            .setDefaultCompProps(this.#ctx.defaultProps)
-            .setElementCollection(this);
+    #createUI(builder: UIBuilder) {
+        builder.setElementCollection(this.elem);
 
         builder.newUICompFor(this)
             .style({ "user-select": "none" })
@@ -42,42 +40,51 @@ class WbTitlebar extends HTMLElement {
                 titleIconBar.class(["wtb-item", "wtb-ctrl-panel"])
                     .addActionIcon({ iconName: Icons.caretup() }, (icon) => {
                         icon.title("Backward step through views");
-                        onClicked(icon, () => { this.#ctx.viewManager?.stepViewsUp(); });
+                        onClicked(icon, () => { this.#stepViewsUp(); });
                     })
                     .addActionIcon({ iconName: Icons.caretdown() }, (icon) => {
                         icon.title("Forward step through views");
-                        onClicked(icon, () => { this.#ctx.viewManager?.stepViewsDown(); });
+                        onClicked(icon, () => { this.#stepViewsDown(); });
                     });
             });
     }
 
-    build(context) {
-        this.#ctx = context;
-        this.#createUI();
+    build(builder: UIBuilder) {
+        this.#createUI(builder);
         return this;
     }
 
-    setTitleText(text) {
-        this.titleText.innerHTML = `[ ${text} ]`;
+    setStepViewsDownAction(cb: () => void) {
+        this.#stepViewsDown = cb;
+        return this;
     }
+
+    setStepViewsUpAction(cb: () => void) {
+        this.#stepViewsUp = cb;
+        return this;
+    }
+
+    setTitleText(text: string) {
+        this.elem.titleText.innerHTML = `[ ${text} ]`;
+    }
+
 }
 
 /**
  * App statusline component
  */
-class WbStatusline extends HTMLElement {
+export class WbStatusline extends HTMLElement {
     static TagName = "wb-statusline";
 
-    #ctx = { systemInfo: null, defaultProps: null };
+    #scmUrl: string = "";
+    elem: Record<string, HTMLElement> = {};
 
     constructor() {
         super();
     }
 
-    #createUI() {
-        let builder = new UIBuilder()
-            .setDefaultCompProps(this.#ctx.defaultProps)
-            .setElementCollection(this);
+    #createUI(builder: UIBuilder) {
+        builder.setElementCollection(this.elem);
 
         builder.newUICompFor(this)
             .style({ "user-select": "none" })
@@ -91,39 +98,43 @@ class WbStatusline extends HTMLElement {
                 iconBar.class("wsl-item").style({ width: "50px", "margin-right": "5px", "text-align": "center" })
                     .add("a", (gitLink) => {
                         gitLink.class(Icons.github("classes"))
-                            .attrib({ title: "Git repo", href: this.#ctx.systemInfo?.url, target: "GitHub_Repos" });
+                            .attrib({ title: "Git repo", href: this.#scmUrl, target: "GitHub_Repos" });
                     });
             });
     }
 
-    build(context) {
-        this.#ctx = context;
-        this.#createUI();
+    build(builder: UIBuilder) {
+        this.#createUI(builder);
         return this;
     }
 
-    setInfoText(text) {
-        this.infoText.innerHTML = text;
+    setScmUrl(url: string) {
+        this.#scmUrl = url;
+        return this;
+    }
+
+    setInfoText(text: string) {
+        this.elem.infoText.innerHTML = text;
     }
 }
 
 /**
  * App sidebar component
  */
-class WbSidebar extends HTMLElement {
+export class WbSidebar extends HTMLElement {
     static TagName = "wb-sidebar";
 
-    #ctx = { viewManager: null, appConfig: null };
-    #elem = {};
+    #topicDefs: Array<Record<string, any>> = [];
+    #workItemDefs: Array<Record<string, any>> = [];
+    #itemAction = (featureName: string) => { };
+    #elem: Record<string, HTMLElement> = {};
 
     constructor() {
         super();
     }
 
-    #createUI() {
-        let builder = new UIBuilder()
-            .setElementCollection(this.#elem)
-            .setDefaultCompProps(new DefaultCompProps());
+    #createUI(builder: UIBuilder) {
+        builder.setElementCollection(this.#elem);
 
         builder.newUICompFor(this)
             .addContainer({ varid: "header", clazzes: "sidebar-header" }, (header) => {
@@ -159,19 +170,19 @@ class WbSidebar extends HTMLElement {
         return elem;
     }
 
-    #onItemClick(evt) {
-        let name = evt.target.dataset.feature;
-        callFeature(name, this.#ctx.viewManager);
+    #onItemClick(evt: Event) {
+        let target = evt.target as HTMLElement;
+        this.#itemAction(target.dataset.feature);
     }
 
-    #createTopicList(topicListDef) {
+    #createTopicList() {
 
         let topicListElem = this.#elem.topicList;
         let topicElem = null;
         let itemElem = null;
         let itemListElem = null;
 
-        topicListDef.forEach(topicDef => {
+        this.#topicDefs.forEach(topicDef => {
             topicElem = this.#newTopic(topicDef.id, topicDef);
             itemListElem = this.#newTopicList();
             topicElem.append(itemListElem);
@@ -239,7 +250,7 @@ class WbSidebar extends HTMLElement {
             }
         });
 
-        let topics = this.querySelectorAll("ul.sbar-item-list")
+        let topics = this.querySelectorAll<HTMLElement>("ul.sbar-item-list")
         for (const list of topics) {
             list.style.display = displayVal;
         }
@@ -248,7 +259,7 @@ class WbSidebar extends HTMLElement {
     #filterItems(text = "") {
         let filter = text.trim().toLowerCase();
         let itemText = "";
-        let items = this.querySelectorAll("li.sbar-item")
+        let items = this.querySelectorAll<HTMLElement>("li.sbar-item")
         let hasFilter = filter.length > 0;
 
         if (hasFilter) {
@@ -286,15 +297,29 @@ class WbSidebar extends HTMLElement {
         }
     }
 
-    #createWorkItemPanel(items) {
-        items.forEach(def => this.addHeaderWorkIcon(def));
+    #createWorkItemPanel() {
+        this.#workItemDefs.forEach(def => this.addHeaderWorkIcon(def));
     }
 
-    build(context) {
-        this.#ctx = context;
-        this.#createUI();
-        this.#createTopicList(this.#ctx.appConfig.topicList);
-        this.#createWorkItemPanel(this.#ctx.appConfig.workpanelItems);
+    setItemAction(cb: (featureName: string) => void) {
+        this.#itemAction = cb;
+        return this;
+    }
+
+    setTopicDefs(topicDefs: Array<object>) {
+        this.#topicDefs = topicDefs;
+        return this;
+    }
+
+    setWorkItemDefs(workItemDefs: Array<object>) {
+        this.#workItemDefs = workItemDefs;
+        return this;
+    }
+
+    build(builder: UIBuilder) {
+        this.#createUI(builder);
+        this.#createTopicList();
+        this.#createWorkItemPanel();
         return this;
     }
 
@@ -338,11 +363,11 @@ class WbSidebar extends HTMLElement {
         return icon;
     }
 
-    getItem(featureId) {
+    getItem(featureId: string): HTMLElement | null {
         return this.#elem.topicList.querySelector(`li[data-feature="${featureId.trim()}"]`);
     }
 
-    getWorkPanelIcon(featureId) {
+    getWorkPanelIcon(featureId: string): ActionIcon | null {
         return this.#elem.workIconBar[featureId];
     }
 }
@@ -350,7 +375,7 @@ class WbSidebar extends HTMLElement {
 /**
  * Action icon component
  */
-class ActionIcon extends HTMLElement {
+export class ActionIcon extends HTMLElement {
     static TagName = "a-icon";
 
     static observedAttributes = ['iconname'];
@@ -381,7 +406,7 @@ class ActionIcon extends HTMLElement {
         return this.classList.contains(this.#getShapeClass(0));
     }
 
-    switch(opt = {}) {
+    switch(opt: Record<string, boolean | Function> = {}) {
         opt = { flag: this.hasInitialShape(), cb: null, ...opt };
 
         if (opt.flag) {
@@ -392,7 +417,7 @@ class ActionIcon extends HTMLElement {
             this.classList.remove(this.#getShapeClass(1));
         }
         if (opt.cb) {
-            opt.cb(this, opt.flag);
+            (opt.cb as Function)(this, opt.flag);
         }
     }
 

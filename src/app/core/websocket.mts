@@ -12,11 +12,11 @@ import { WorkbenchInterface as WbApp } from 'app/workbench.mjs';
  */
 export class WebSocketConnection {
 
-    #hostUrl;
-    #socket;
-    #listener;
+    #hostUrl: string;
+    #socket: WebSocket;
+    #listener: any;
 
-    constructor(hostUrl, options = {}) {
+    constructor(hostUrl: string, options = {}) {
         this.#hostUrl = hostUrl;
         this.#listener = { "any": [] };
     }
@@ -32,20 +32,20 @@ export class WebSocketConnection {
             this.#socket = new WebSocket(this.#hostUrl);
 
             // Event listener 
-            this.#socket.onopen = (event) => {
+            this.#socket.onopen = (event: Event) => {
                 Logger.info("WebSocket connection [opened]");
             };
 
-            this.#socket.onmessage = (event) => {
+            this.#socket.onmessage = (event: MessageEvent) => {
                 this.#onMessage(event);
             };
 
-            this.#socket.onclose = (event) => {
+            this.#socket.onclose = (event: CloseEvent) => {
                 this.#socket = null;
                 Logger.info("WebSocket connection [closed]");
             };
 
-            this.#socket.onerror = (event) => {
+            this.#socket.onerror = (event: Event) => {
                 this.#socket = null;
                 Logger.error("WebSocket connection error");
                 this.#onMessage(event);
@@ -64,7 +64,7 @@ export class WebSocketConnection {
     /**
      * Expects WsoCommonMessage objects
      */
-    sendMessage(wsoMsg, sentCb = null) {
+    sendMessage(wsoMsg: WsoCommonMessage, sentCb: Function = null) {
         if (wsoMsg instanceof WsoCommonMessage) {
             if (this.isConnected()) {
                 let msg = this.#createWsoMessageString(wsoMsg);
@@ -73,7 +73,7 @@ export class WebSocketConnection {
                 return true;
             } else {
                 Logger.warn("WebSocket NOT connected");
-                WbApp.confirm({ message: "The Server Connection was closed.<br>Would you like to try a reconnect?" }, 
+                WbApp.confirm({ message: "The Server Connection was closed.<br>Would you like to try a reconnect?" },
                     (value) => value ? this.connect() : null);
             }
         } else {
@@ -82,7 +82,7 @@ export class WebSocketConnection {
         return false;
     }
 
-    addMessageListener(cb, subject = "any") {
+    addMessageListener(cb: (wsoMsg: WsoCommonMessage) => void, subject: string = "any") {
         if (Object.hasOwn(this.#listener, subject)) {
             if (!this.#listener[subject].includes(cb)) {
                 this.#listener[subject].push(cb);
@@ -95,7 +95,7 @@ export class WebSocketConnection {
     /**
      * Expects WsoCommonMessage as JSON
      */
-    #onMessage(event) {
+    #onMessage(event: MessageEvent | Event) {
         let subject = "any";
         let msg = "";
         let wsoMsg = new WsoCommonMessage("");
@@ -103,14 +103,14 @@ export class WebSocketConnection {
         if (event.type === "error") {
             wsoMsg.setStatusError("connection error");
         } else {
-            msg = JSON.parse(event.data);
+            msg = JSON.parse((event as MessageEvent).data);
             wsoMsg = Object.assign(wsoMsg, msg);
         }
 
-        this.#listener[subject].forEach((cb) => cb(wsoMsg));
+        this.#listener[subject].forEach((cb: (wsoMsg: WsoCommonMessage) => void) => cb(wsoMsg));
     }
 
-    #createWsoMessageString(wsoMsg) {
+    #createWsoMessageString(wsoMsg: WsoCommonMessage) {
         let msg = wsoMsg.reference.length > 0 ? "<" + wsoMsg.reference + ">" : "";
         msg = msg + JSON.stringify(wsoMsg);
         return msg;

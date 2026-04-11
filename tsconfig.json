@@ -1,16 +1,25 @@
 {
     "compilerOptions": {
         "target": "ES2022",
-        "module": "ESNext",
+        "module": "esnext",
         "moduleResolution": "node",
         "allowJs": true,
         "checkJs": false,
         "outDir": "./dist",
         "rootDir": "./src",
-        "baseUrl": "./src/app",
+        "baseUrl": "./src",
         "paths": {
-            "/*": [
-                "./*"
+            "app/*": [
+                "app/*"
+            ],
+            "config/*": [
+                "config/*"
+            ],
+            "core/*": [
+                "app/core/*"
+            ],
+            "features/*": [
+                "app/features/*"
             ]
         }
     },

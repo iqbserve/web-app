@@ -3,14 +3,16 @@
 import { Logger } from 'core/logging.mjs';
 import { isUrlAvailable, BackendServerUrl, setDisplay, setVisibility, decodeRequestParameter } from 'core/tools.mjs';
 import { SplitBarHandler } from 'core/view-classes.mjs';
-import { DefaultCompProps, onClicked } from 'core/uibuilder.mjs';
+import { UIBuilder, DefaultCompProps, onClicked } from 'core/uibuilder.mjs';
 import { WorkbenchViewManager } from 'core/view-manager.mjs';
 import { WebSocketConnection } from 'core/websocket.mjs';
 import { NotificationHandler, Notification } from 'core/notification.mjs';
 import { WbProperties } from 'config/wbapp-properties.mjs';
-import * as Webapi from 'core/webapi.mjs';
+import { WbAppConfig } from 'config/wbapp-config.mjs';
+import { callFeature } from 'app/wb-features.mjs';
+import * as Webapi from 'app/core/webapi.mjs';
 import * as Icons from 'core/icons.mjs';
-import { registerUIWebComponents } from 'core/uicomponents.mjs';
+import { registerUIWebComponents, WbTitlebar, WbStatusline, WbSidebar } from 'app/core/uicomponents.mjs';
 
 registerUIWebComponents();
 
@@ -18,18 +20,18 @@ registerUIWebComponents();
  * The workbench module implements the entry point of the SPA Application.
  */
 
-let appConfig = null;
-let systemInfo = {};
+let appConfig: WbAppConfig;
+let systemInfo: { [key: string]: string } = {};
 
 let rootElement = null;
 
-let titlebar = null;
-let sidebar = null;
-let statusline = null;
+let titlebar: WbTitlebar;
+let sidebar: WbSidebar;
+let statusline: WbStatusline;
 
-let viewManager = null;
-let webSocket = null;
-let authProvider = null;
+let viewManager: WorkbenchViewManager;
+let webSocket: WebSocketConnection;
+let authProvider: AuthenticationProvider;
 
 let notificationHandler = new NotificationHandler();
 
@@ -158,19 +160,19 @@ function initAuthentication(processAppStart) {
 
 /**
  */
-function applyConfig(config, authenticated = false) {
-	appConfig = config;
+function applyConfig(configJson, authenticated = false) {
+	appConfig = new WbAppConfig(configJson);
 
 	if (authenticated) {
-		appConfig.properties.showIntro = false;
+		appConfig.getProperties().showIntro = false;
 	}
 
-	if (appConfig.properties) {
-		WbProperties.apply(appConfig.properties);
+	if (appConfig.getProperties()) {
+		WbProperties.apply(appConfig.getProperties());
 	}
-	if (appConfig.systemInfo) {
-		WbProperties.applyGroup("systemInfo", appConfig.systemInfo);
-		systemInfo = appConfig.systemInfo;
+	if (appConfig.getSystemInfo()) {
+		WbProperties.applyGroup("systemInfo", appConfig.getSystemInfo());
+		systemInfo = appConfig.getSystemInfo();
 	}
 }
 
@@ -228,11 +230,14 @@ function createUI() {
 	let wbDefaults = new DefaultCompProps();
 	wbDefaults.get("actionIcon").clazzes = ["wkv-action-icon"];
 
-	titlebar = document.getElementById("app-titlebar")
-		.build({ viewManager: viewManager, defaultProps: wbDefaults });
+	titlebar = (document.getElementById("app-titlebar") as WbTitlebar)
+		.setStepViewsDownAction(() => { viewManager.stepViewsDown(); })
+		.setStepViewsUpAction(() => { viewManager.stepViewsUp(); })
+		.build(new UIBuilder().setDefaultCompProps(wbDefaults));
 
-	statusline = document.getElementById("app-statusline")
-		.build({ systemInfo: systemInfo, defaultProps: wbDefaults });
+	statusline = (document.getElementById("app-statusline") as WbStatusline)
+		.setScmUrl(systemInfo.url)
+		.build(new UIBuilder().setDefaultCompProps(wbDefaults));
 
 	createSidebar();
 	createIntroBox();
@@ -244,8 +249,13 @@ function createUI() {
  */
 function createSidebar() {
 
-	sidebar = document.getElementById("app-sidebar")
-		.build({ viewManager: viewManager, appConfig: appConfig });
+	sidebar = (document.getElementById("app-sidebar") as WbSidebar)
+		.setTopicDefs(appConfig.getTopicList())
+		.setWorkItemDefs(appConfig.getWorkpanelItems())
+		.setItemAction((featureName) => {
+			callFeature(featureName, viewManager);
+		})
+		.build(new UIBuilder().setDefaultCompProps(new DefaultCompProps()));
 
 	new SplitBarHandler(document.getElementById("app-sidebar-splitter"))
 		.setCompBefore(sidebar)
@@ -302,13 +312,13 @@ function createIntroBox() {
 /**
  */
 class AuthenticationProvider {
-	module;
-	instance = null;
-	isAuthenticated = false;
-	userProfile = null;
-	timerId = "";
+	module: any = null;
+	instance: any = null;
+	isAuthenticated: boolean = false;
+	userProfile: any = null;
+	timerId: number | null = null;
 
-	config;
+	config: any;
 
 	constructor(config = {}) {
 		this.config = { ...{ notifyingEnabled: true }, ...config };
@@ -377,7 +387,7 @@ class AuthenticationProvider {
 
 	deleteTokenRefreshTimer() {
 		clearInterval(this.timerId);
-		this.timerId = "";
+		this.timerId = null;
 	}
 
 	getUserProfile(cb) {

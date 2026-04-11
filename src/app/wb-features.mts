@@ -4,11 +4,12 @@ import { Logger } from 'core/logging.mjs';
 import { WorkView } from 'core/view-classes.mjs';
 import { CommandDef } from 'core/data-classes.mjs';
 import { LazyFunction, typeUtil } from 'core/tools.mjs';
+import { WorkbenchViewManager } from 'core/view-manager.mjs';
 
 /**
  * The module provides the user functionalities of the app
  */
-let WbFeatures = {
+let WbFeatures: Record<string, LazyFunction> = {
     systemLogin: new LazyFunction("app/workbench.mjs", "processSystemLogin").asFunction(),
 
     systemInfos: new LazyFunction("features/system-infos.mjs", "getView"),
@@ -31,19 +32,19 @@ let WbFeatures = {
 
 /**
  */
-export function callFeature(name, viewManager) {
+export function callFeature(name: string, viewManager: WorkbenchViewManager) {
     if (WbFeatures[name]) {
         let feature = WbFeatures[name];
         if (feature instanceof LazyFunction) {
-            feature.invoke((result) => {
-                if (result instanceof WorkView) {
-                    viewManager.openView(result);
-                } else if (typeUtil.isFunction(result)) {
-                    result();
+            feature.invoke((retObj: WorkView | (() => void) | null) => {
+                if (retObj instanceof WorkView) {
+                    viewManager.openView(retObj);
+                } else if (typeUtil.isFunction(retObj)) {
+                    retObj();
+                } else {
+                    Logger.warn(`Call to feature [${name}] returned unexpected value [${retObj}]`)
                 }
             });
-        } else if (typeUtil.isFunction(feature)) {
-            feature();
         }
     } else {
         Logger.warn(`Call to unknown feature [${name}]`)
@@ -52,7 +53,7 @@ export function callFeature(name, viewManager) {
 
 /**
  */
-export function addFeature(name, feature) {
+export function addFeature(name: string, feature: LazyFunction) {
     if (WbFeatures[name]) {
         throw new Error(`Feature [${name}] already exists`);
     } else {

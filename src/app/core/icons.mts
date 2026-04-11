@@ -7,7 +7,7 @@
 /**
  * PUBLIC
  */
-export function getIconClasses(name, asClassString = false) {
+export function getIconClasses(name: string, asClassString = false) {
 	let clazzes = iconClasses[name][0];
 	if (asClassString) {
 		return clazzes.join(" ");
@@ -15,7 +15,7 @@ export function getIconClasses(name, asClassString = false) {
 	return clazzes;
 }
 
-export function getIconShapeClasses(name) {
+export function getIconShapeClasses(name: string) {
 	return iconClasses[name][1];
 }
 
@@ -68,7 +68,7 @@ export const gi_toggleExpand = newConstantFunction("gi_toggleExpand");
 /**
  * INTERNALS
  */
-function newConstantFunction(name) {
+function newConstantFunction(name: string) {
 	return (opt = null) => {
 		if (!opt) {
 			return name;
@@ -85,7 +85,7 @@ function newConstantFunction(name) {
  * <name> = [[iconClasses], [shapeClasses]]
  * e.g. [["bi", "bi-person"], ["bi-person", "bi-person-check"]]
  */
-function createClassDef(shapes, typeClasses = BI_TypeClasses) {
+function createClassDef(shapes: string[], typeClasses = BI_TypeClasses) {
 	return Object.freeze([[...typeClasses, shapes[0]], Object.freeze(shapes)]);
 }
 

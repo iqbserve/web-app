@@ -7,23 +7,25 @@ import { WorkView, StandardDialog } from 'core/view-classes.mjs';
  * A simple manager for showing views in the app working area.
  * </pre>
  */
+type ViewEntry = { view: WorkView, cart: HTMLElement }
+
 export class WorkbenchViewManager {
 
-	#workarea;
-	#registeredViews;
+	#workarea: HTMLElement;
+	#registeredViews: Record<string, ViewEntry>;
 
-	#standardDlg;
+	#standardDlg: StandardDialog;
 
-	constructor(workareaElem) {
+	constructor(workareaElem: HTMLElement) {
 		this.#workarea = workareaElem;
 		this.#registeredViews = {};
 
 		this.#standardDlg = new StandardDialog(document.getElementsByTagName("main")[0]);
 	}
 
-	openView(view) {
+	openView(view: WorkView) {
 		if (view instanceof WorkView) {
-			this.#resolveViewRegistration(view, (viewEntry) => {
+			this.#resolveViewRegistration(view, (viewEntry: ViewEntry) => {
 				this.#openViewImpl(viewEntry);
 			});
 		} else {
@@ -31,15 +33,17 @@ export class WorkbenchViewManager {
 		}
 	}
 
-	closeView(view) {
-		let viewEntry = view;
-		if (viewEntry instanceof WorkView) {
+	closeView(view: WorkView | string) {
+		let viewEntry: ViewEntry;
+		if (view instanceof WorkView) {
 			viewEntry = this.#registeredViews[view.id];
+		} else {
+			viewEntry = this.#registeredViews[view];
 		}
 		// view is expected to do an internal closing itself 
 		// and return true if it was closeabel and did close
 		if (viewEntry.view.close()) {
-			// then the viewmanager does the visual close
+			// then this viewmanager does the visual close
 			this.#setViewCartVisible(viewEntry.cart, false);
 		}
 	}
@@ -63,10 +67,10 @@ export class WorkbenchViewManager {
 		}
 	}
 
-	#openViewImpl(viewEntry) {
+	#openViewImpl(viewEntry: ViewEntry) {
 		this.#closeAllCloseableViews();
 		viewEntry.view.open();
-		this.moveView(viewEntry.view, 1);
+		this.moveView(viewEntry.view, "1");
 		this.#setViewCartVisible(viewEntry.cart, true);
 		this.#scrollToTop();
 	}
@@ -95,14 +99,14 @@ export class WorkbenchViewManager {
 		for (let key in this.#registeredViews) {
 			let viewEntry = this.#registeredViews[key];
 			if (viewEntry.cart) {
-				this.closeView(viewEntry);
+				this.closeView(viewEntry.view);
 			}
 		}
 	}
 
 	#getVisibleChildren() {
-		let children = [];
-		for (let child of this.#workarea.children) {
+		let children: HTMLElement[] = [];
+		for (let child of Array.from(this.#workarea.children) as HTMLElement[]) {
 			if (child.style.display == "block") {
 				children.push(child);
 			}
@@ -130,7 +134,7 @@ export class WorkbenchViewManager {
 		}
 	}
 
-	moveView(view, position) {
+	moveView(view: WorkView, position: string) {
 		let elemCount = this.#workarea.children.length;
 		let viewCart = this.#registeredViews[view.id].cart;
 		let pos = -1;
@@ -164,11 +168,11 @@ export class WorkbenchViewManager {
 		}
 	}
 
-	promptUserInput(text, value, cb) {
+	promptUserInput(text: string, value: string, cb: (value: string) => void) {
 		this.#standardDlg.openInput(text, value, cb);
 	}
 
-	promptConfirmation(text, cb) {
+	promptConfirmation(text: string, cb: (value: boolean) => void) {
 		this.#standardDlg.openConfirmation(text, cb);
 	}
 }

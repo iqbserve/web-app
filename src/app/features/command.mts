@@ -1,7 +1,7 @@
 /* Authored by iqbserve.de */
 
 import { NL, newSimpleId, asDurationString, FileDataReader, LazyFunction } from 'core/tools.mjs';
-import { WsoCommonMessage } from 'core/data-classes.mjs';
+import { WsoCommonMessage, CommandDef } from 'core/data-classes.mjs';
 import { WorkView, AttachmentHandler } from 'core/view-classes.mjs';
 import { UIBuilder, onClicked, onInput, onKeydown, KEY } from 'core/uibuilder.mjs';
 import { WorkViewHtml } from 'core/view-templates.mjs';
@@ -27,21 +27,21 @@ import { WorkbenchInterface as WbApp } from 'app/workbench.mjs';
  */
 export class CommandView extends WorkView {
 	//websocket communication ref id
-	wsoRefId;
+	wsoRefId: string;
 
-	commandDef;
-	commandName;
-	runTime;
-	duration;
-	namedArgs = { none: "" };
+	commandDef: CommandDef;
+	commandName: string;
+	runTime: number;
+	duration: number;
+	namedArgs: { [key: string]: string; } = { none: "" };
 
 	//input element for file dialog
-	attachmentFileReader;
-	attachmentHandler;
+	attachmentFileReader: FileDataReader;
+	attachmentHandler: AttachmentHandler;
 
 	//ui element collections
-	elem = {};
-	uiobj = {};
+	elem: { [key: string]: any; } = {};
+	uiobj: { [key: string]: any; } = {};
 
 	outputProps = { initWidth: "1000px", initHeight: "300px", hstep: 50, steps: 0 };
 
@@ -118,13 +118,13 @@ export class CommandView extends WorkView {
 				})
 			.appendTo(compSet);
 
-		this.createArgsSection(builder, compSet);
-		this.createAttachmentsSection(builder, compSet);
+		this.createArgsSection(builder, compSet, null);
+		this.createAttachmentsSection(builder, compSet, null);
 
 		//a separator
 		builder.newUIComp().addSeparator((elem) => { elem.style({ width: "100%" }) }).appendTo(compSet);
 
-		this.createOutputSection(builder, compSet);
+		this.createOutputSection(builder, compSet, null);
 	}
 
 	/**
@@ -290,10 +290,11 @@ export class CommandView extends WorkView {
 	/**
 	 */
 	clearOutput(ask = false) {
-		if (!this.state.isRunning && this.elem.taOutput.value.toString().trim()) {
+		let taOutput = this.elem.taOutput as HTMLTextAreaElement;
+		if (!this.state.isRunning && taOutput.value.toString().trim()) {
 			let clear = () => {
-				let lastValue = this.elem.taOutput.value;
-				this.elem.taOutput.value = "";
+				let lastValue = taOutput.value;
+				taOutput.value = "";
 				return lastValue;
 			};
 			if (ask) {

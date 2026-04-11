@@ -3,7 +3,7 @@
 /**
  * Html layout source for a standard work view.
  */
-export const WorkViewHtml = (data = null) => {
+export const WorkViewHtml = (data: object | null = null) => {
 	return `
 <div class="work-view" style="visibility: hidden;">
 	<div id="work-view-header" class="work-view-header-container">

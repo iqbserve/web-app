@@ -15,11 +15,11 @@ const copyRecursiveSync = (src, dest) => {
             copyRecursiveSync(path.join(src, childItemName), path.join(dest, childItemName));
         });
     } else {
-        // Only copy non-TS files that are not in the app directory (tsc handles the app directory)
+        // Only copy non-MTS/TS files that are not in the app directory (tsc handles the app directory)
         // Actually, we can copy everything except .ts files. tsc will overwrite the .js files from app/ if it compiles them.
         // To be safe, let's skip the 'app' directory entirely since tsc handles it.
         const normalizedSrc = src.replace(/\\/g, '/');
-        if (!normalizedSrc.startsWith('src/app/') && !normalizedSrc.endsWith('.ts')) {
+        if (!normalizedSrc.startsWith('src/app/') && !(normalizedSrc.endsWith('.mts') || normalizedSrc.endsWith('.ts'))) {
             fs.copyFileSync(src, dest);
         }
     }

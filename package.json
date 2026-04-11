@@ -15,7 +15,6 @@
     "typescript": "^5.9.3"
   },
   "scripts": {
-    "build": "tsc && node copy-assets.mjs",
-    "start": "node dist/workbench.mjs"
+    "build": "tsc && node copy-assets.mjs"
   }
 }

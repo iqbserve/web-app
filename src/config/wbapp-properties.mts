@@ -4,26 +4,27 @@
  * A simple properties class for global app values.
  * see also JPSWebAppConfigSupplier.java for backend support
  */
+
+type PropertiesEntryRecord = { [key: string]: string | boolean | number };
+type PropertiesDataRecord = { [key: string]: string | boolean | number | PropertiesEntryRecord };
+
 class Properties {
 
-    #entries = {
+    #entries: PropertiesDataRecord = {
         showIntro: true,
         autoStartFeature: "",
-        logLevel: 0, //all
-
+        logLevel: 0,
         webServiceUrlRoot: "/webapi",
         webSocketUrlRoot: "/wsoapi",
-        webBackendServerUrl: null,
+        webBackendServerUrl: "",
+        webAuthenticationEnabled: false,
 
+        systemInfo: {} as PropertiesEntryRecord,
         vcUrls: {
             loader: "https://cdn.jsdelivr.net/npm/monaco-editor@0.55.1/min/vs/loader.js",
             config: "https://cdn.jsdelivr.net/npm/monaco-editor@0.55.1/min/vs"
-        },
+        } as PropertiesEntryRecord,
 
-        systemInfo: {
-        },
-
-        webAuthenticationEnabled: false,
         authenticationConfig: {
             module: '/assets/js/keycloak.js',
             serverUrl: 'http://localhost:9595',
@@ -32,22 +33,22 @@ class Properties {
             onLoad: 'check-sso', //'check-sso' 'login-required'
             checkLoginIframe: false, // Optional: Turn off iframe check if 3rd party cookie issues
             tokenRefreshInterval: 4 * 60 * 1000 // every 4 minutes
-        }
+        } as PropertiesEntryRecord
     };
 
-    get(key, defaultVal = null) {
+    get(key: string, defaultVal = null) {
         let value = this.#entries[key];
         if (value === true || value === false) { return value; }
         return this.#entries[key] || defaultVal;
     }
 
-    apply(values) {
+    apply(values: object) {
         this.#entries = { ...this.#entries, ...values };
     }
 
-    applyGroup(name, values) {
+    applyGroup(name: string, values: object) {
         if (!this.#entries[name]) { this.#entries[name] = {} }
-        this.#entries[name] = { ...this.#entries[name], ...values };
+        this.#entries[name] = { ...(this.#entries[name] as PropertiesEntryRecord), ...values };
     }
 
     showIntro() {
@@ -68,6 +69,13 @@ class Properties {
 
     isWebAuthenticationEnabled() {
         return this.get("webAuthenticationEnabled", false);
+    }
+
+    getLoggingProperties() {
+        const pick = ["logLevel"];
+        return Object.fromEntries(
+            pick.map(key => [key, this.#entries[key]])
+        ) as PropertiesEntryRecord;
     }
 }
 

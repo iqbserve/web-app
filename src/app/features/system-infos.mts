@@ -6,7 +6,7 @@ import { WorkView, WorkViewTableHandler, TableData } from 'core/view-classes.mjs
 import { UIBuilder, onClicked, onKeyup, KEY } from 'core/uibuilder.mjs';
 import { WorkViewHtml } from 'core/view-templates.mjs';
 import * as Icons from 'core/icons.mjs';
-import * as Webapi from 'core/webapi.mjs';
+import * as Webapi from 'app/core/webapi.mjs';
 
 import { WorkbenchInterface as WbApp } from 'app/workbench.mjs';
 
@@ -16,14 +16,24 @@ import { WorkbenchInterface as WbApp } from 'app/workbench.mjs';
  */
 class SystemInfoView extends WorkView {
 
-	appBoxElem = {};
+	leftContainer: HTMLElement;
+	appBoxElem = {
+		tfName: null as HTMLInputElement,
+		tfVersion: null as HTMLInputElement,
+		tfDescription: null as HTMLInputElement,
+		lnkReadMore: null as HTMLLinkElement,
+	};
 
-	configBoxElem = {};
+	configBoxElem = {
+		icoSave: null as HTMLElement,
+		icoRedo: null as HTMLElement,
+	};
 	configTable;
 
 	needsViewDataRefresh = true;
+	boxWidth: "720px";
 
-	constructor(id) {
+	constructor(id: string) {
 		super(id, null);
 		this.viewSource.setHtml(WorkViewHtml());
 	}
@@ -36,9 +46,6 @@ class SystemInfoView extends WorkView {
 			.setCompPropDefaults((props) => {
 				props.get("label").styleProps = { "min-width": "80px", "text-align": "right" };
 			});
-
-		this.boxWidth = "720px";
-		this.app_scm_tab1 = "?tab=readme-ov-file#jamn---just-another-micro-node-server";
 
 		this.initWorkarea(builder);
 		this.initAppBox(builder);
@@ -205,8 +212,7 @@ class SystemInfoView extends WorkView {
 					let orgCellValue = cellElem.innerHTML;
 					cellElem.innerHTML = '';
 
-					let inputFieldProps = {};
-					inputFieldProps.booleanValue = typeUtil.booleanFromString(orgCellValue);
+					let inputFieldProps = { booleanValue: typeUtil.booleanFromString(orgCellValue) };
 					let cellInput = this.configTable.newCellInputField(inputFieldProps);
 					cellInput.value = orgCellValue;
 
@@ -252,7 +258,7 @@ class SystemInfoView extends WorkView {
 }
 
 //export this view component as singleton instance
-let viewInstance;
+let viewInstance: SystemInfoView;
 export function getView() {
 	if (!viewInstance) {
 		viewInstance = new SystemInfoView("systemInfoView");
@@ -269,8 +275,7 @@ function getInfos(cb) {
 	if (systemConfigData) {
 		cb(systemConfigData);
 	} else {
-		//importJson(BackendServerUrl(`/wbapp-configuration.json?name=system`), (data) => {
-		Webapi.doGET(`${Webapi.service_get_wbappconfiguration}?name=system`).then((data) => {
+		Webapi.doGET(`${Webapi.service_get_wbappconfiguration}?name=system`, { parseJson: true }).then((data) => {
 			systemConfigData = data;
 			cb(systemConfigData);
 		});

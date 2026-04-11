@@ -14,12 +14,12 @@ export const NL = "\n";
  * that get lazily resolved at the first call
  */
 export class LazyFunction {
-	#moduleName;
-	#functionName;
-	#functionArgs;
+	#moduleName = "";
+	#functionName = "";
+	#functionArgs = null;
 	#returnOnly = false;
 
-	constructor(module, fncName, fncArgs = null) {
+	constructor(module: string, fncName: string, fncArgs: any = null) {
 		this.#moduleName = module;
 		this.#functionName = fncName;
 		this.#functionArgs = fncArgs;
@@ -32,7 +32,7 @@ export class LazyFunction {
 		return this;
 	}
 
-	invoke(cb) {
+	invoke(cb: (retVal: any) => void) {
 		import(this.#moduleName)
 			.then((module) => {
 				let retVal;
@@ -50,7 +50,7 @@ export class LazyFunction {
 
 /**
  */
-export function importJson(url, cb) {
+export function importJson(url: string, cb: (data: any) => void) {
 	import(url, {
 		with: { type: 'json' }
 	}).then((module) => {
@@ -62,7 +62,7 @@ export function importJson(url, cb) {
 
 /**
  */
-export function isUrlAvailable(url, cb, timeout = 2000) {
+export function isUrlAvailable(url: string, cb: (available: boolean) => void, timeout = 2000) {
 	let controller = new AbortController();
 	let id = setTimeout(() => controller.abort(), timeout);
 	Logger.debug(`Looking for ... ${url}, ${id}`);
@@ -84,7 +84,7 @@ export function isUrlAvailable(url, cb, timeout = 2000) {
 
 /**
  */
-export function BackendServerUrl(...path) {
+export function BackendServerUrl(...path: string[]) {
 	let url = WbProperties.webBackendServerUrl(window.location.origin);
 
 	let urlPath = path.join("/");
@@ -98,7 +98,7 @@ export function BackendServerUrl(...path) {
 
 /**
  */
-export function OriginServerUrl(...path) {
+export function OriginServerUrl(...path: string[]) {
 	let url = window.location.origin;
 
 	let urlPath = path.join("/");
@@ -112,32 +112,32 @@ export function OriginServerUrl(...path) {
 
 /**
  */
-export function decodeRequestParameter(href) {
+export function decodeRequestParameter(href: string) {
 	const paramMap = new Map(new URL(href).searchParams.entries());
 	return paramMap;
 }
 
-export function styleFloat(elem, prop) {
+export function styleFloat(elem: Element, prop: string) {
 	return Number.parseFloat(window.getComputedStyle(elem)[prop]) || 0;
 }
 
 /**
  */
-export function findChildOf(root, childId) {
+export function findChildOf(root: Element, childId: string) {
 	const selector = `#${CSS.escape(childId)}`;
 	return root.querySelector(selector);
 }
 
 /**
  */
-export function setVisibility(elem, flag) {
+export function setVisibility(elem: HTMLElement, flag: boolean) {
 	elem.style["visibility"] = flag ? "visible" : "hidden";
 	return elem;
 }
 
 /**
  */
-export function setDisplay(elem, flag) {
+export function setDisplay(elem: HTMLElement, flag: boolean | string) {
 	if (typeof flag == "boolean") {
 		elem.style["display"] = flag ? "block" : "none";
 	} else if (typeof flag == "string") {
@@ -154,7 +154,7 @@ export function newSimpleId(prfx = "") {
 
 /**
  */
-export function mergeArrayInto(target, source, allowDuplicates = false) {
+export function mergeArrayInto(target: any[], source: any[], allowDuplicates = false) {
 	target = target || [];
 	source = source || [];
 	//copy target
@@ -167,7 +167,7 @@ export function mergeArrayInto(target, source, allowDuplicates = false) {
 	return target;
 }
 
-export function clearArray(array) {
+export function clearArray(array: any[]) {
 	if (array) { array.length = 0; }
 }
 
@@ -177,8 +177,8 @@ export const fileUtil = {
 
 	/**
 	 */
-	saveToFileFapi: (fileName, text) => {
-		window.showSaveFilePicker({
+	saveToFileFapi: (fileName: string, text: string) => {
+		(window as any).showSaveFilePicker({
 			suggestedName: fileName,
 			types: [{
 				description: "Text file",
@@ -193,7 +193,7 @@ export const fileUtil = {
 
 	/**
 	 */
-	saveToFileClassic: (fileName, text) => {
+	saveToFileClassic: (fileName: string, text: string) => {
 		let blob = new Blob([text], { type: "text/plain" });
 		let url = URL.createObjectURL(blob);
 
@@ -207,7 +207,7 @@ export const fileUtil = {
 
 	/**
 	 */
-	createFileInputElement: (fileTypes, cb) => {
+	createFileInputElement: (fileTypes: string, cb: (evt: Event) => void) => {
 		let fileInput = document.createElement("input");
 		fileInput.type = "file";
 		fileInput.style.display = "none";
@@ -229,13 +229,13 @@ export const fileUtil = {
  */
 export class FileDataReader {
 
-	#fileTypes;
-	#dataCb;
+	#fileTypes: string;
+	#dataCb: (dataFile: any) => void;
 	#fsapi = false;
 
-	#fileInput;
+	#fileInput: HTMLInputElement;
 
-	constructor(fileTypes, dataCb, fsapi = false) {
+	constructor(fileTypes: string, dataCb: (dataFile: any) => void, fsapi = false) {
 		this.#fileTypes = fileTypes;
 		this.#dataCb = dataCb;
 		this.#fsapi = fsapi;
@@ -245,13 +245,14 @@ export class FileDataReader {
 			this.#fileInput.style.display = "none";
 			this.#fileInput.accept = this.#fileTypes;
 			this.#fileInput.addEventListener("change", (evt) => {
-				let file = evt.target.files.length > 0 ? evt.target.files[0] : null;
+				let input = evt.target as HTMLInputElement;
+				let file = input.files.length > 0 ? input.files[0] : null;
 				this.#getFileDataFrom(file);
 			});
 		}
 	}
 
-	#getFileDataFrom(file) {
+	#getFileDataFrom(file: File) {
 		let dataFile = null;
 		if (file) {
 			dataFile = { name: file.name, date: new Date(file.lastModified).toLocaleTimeString(), data: null };
@@ -276,46 +277,46 @@ export class FileDataReader {
  */
 export const typeUtil = {
 
-	isString: (val) => {
+	isString: (val: any) => {
 		return (typeof val === 'string');
 	},
 
-	isObject: (val) => {
+	isObject: (val: any) => {
 		return (val !== null && typeof val === 'object');
 	},
 
-	isDomElement: (val) => {
+	isDomElement: (val: any) => {
 		return (val !== null && (val instanceof Element || val.nodeType !== undefined));
 	},
 
-	isArray: (val) => {
+	isArray: (val: any) => {
 		return Array.isArray(val);
 	},
 
-	isFunction: (val) => {
+	isFunction: (val: any) => {
 		return (val !== null && (typeof val === 'function'));
 	},
 
-	isNumber: (val) => {
+	isNumber: (val: any) => {
 		return (val !== null && typeof val === 'number');
 	},
 
-	isBoolean: (val) => {
+	isBoolean: (val: any) => {
 		return (val === true || val === false);
 	},
 
-	isBooleanString: (val) => {
+	isBooleanString: (val: any) => {
 		return (val === "true" || val === "false");
 	},
 
-	booleanFromString: (val) => {
+	booleanFromString: (val: any) => {
 		if (typeUtil.isBooleanString(val)) {
 			return (val === "true");
 		}
 		return null;
 	},
 
-	stringFromBoolean: (val) => {
+	stringFromBoolean: (val: any) => {
 		if (typeUtil.isBoolean(val)) {
 			return val ? "true" : "false";
 		}
@@ -326,7 +327,7 @@ export const typeUtil = {
 
 /**
  */
-export function asDurationString(ms) {
+export function asDurationString(ms: number) {
 	const hours = String(Math.floor(ms / 3600000)).padStart(2, '0');
 	const minutes = String(Math.floor((ms % 3600000) / 60000)).padStart(2, '0');
 	const seconds = String(Math.floor((ms % 60000) / 1000)).padStart(2, '0');

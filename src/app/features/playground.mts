@@ -5,7 +5,7 @@ import { NL, newSimpleId, FileDataReader, BackendServerUrl, OriginServerUrl } fr
 import { WorkView, ViewDialog, SplitBarHandler, AttachmentHandler } from 'core/view-classes.mjs';
 import { UIBuilder, onClicked, onChange } from 'core/uibuilder.mjs';
 import { WorkViewHtml } from 'core/view-templates.mjs';
-import * as Webapi from 'core/webapi.mjs';
+import * as Webapi from 'app/core/webapi.mjs';
 import * as Icons from 'core/icons.mjs';
 
 import { WorkbenchInterface as WbApp } from 'app/workbench.mjs';
@@ -39,18 +39,18 @@ let CodeEditor = {
  */
 class PlaygroundView extends WorkView {
 
-	refId;
+	refId: string;
 
-	scriptFileReader;
-	attachmentFileReader;
-	attachmentHandler;
+	scriptFileReader: FileDataReader;
+	attachmentFileReader: FileDataReader;
+	attachmentHandler: AttachmentHandler;
 
 	scriptDataFile;
 	lastRequest;
 
 	//member objects to collect ui elements and ui objects from the builder
-	elem = {};
-	uiobj = {};
+	elem: { [key: string]: any; } = {};
+	uiobj: { [key: string]: any; } = {};
 
 	//side panel 
 	spMainPanel;
@@ -123,7 +123,7 @@ class PlaygroundView extends WorkView {
 			taFontSize: "12px"
 		};
 
-		let comps = {};
+		let comps: any = {};
 		this.createWorkareaLayout(builder, comps);
 
 		this.createEditorComp(builder, comps.waMain, comps);
@@ -252,20 +252,25 @@ class PlaygroundView extends WorkView {
 		this.setRunning(true);
 		this.setDisabled(true);
 
+		// @ts-ignore
+		const requireObj = window.require;
+
 		// configure the path to the VS Code worker scripts
-		require.config({ paths: { 'vs': WbProperties.get("vcUrls").config } });
+		requireObj.config({ paths: { 'vs': WbProperties.get("vcUrls").config } });
 
 		// load the editor module and create the instance
-		require(['vs/editor/editor.main'], function () {
+		requireObj(['vs/editor/editor.main'], function () {
 			try {
+				// @ts-ignore
+				const monacoObj = window.monaco;
 
 				// config editor languages
 				for (const name in CodeEditor.languageConfigs) {
-					monaco.languages.setLanguageConfiguration(name, CodeEditor.languageConfigs[name]);
+					monacoObj.languages.setLanguageConfiguration(name, CodeEditor.languageConfigs[name]);
 				}
 
 				// create editor instance
-				CodeEditor.instance = monaco.editor.create(editorContainer, {
+				CodeEditor.instance = monacoObj.editor.create(editorContainer, {
 					value: textCollection["newSnippet"],
 					language: CodeEditor.defaultLanguage,
 					theme: CodeEditor.theme,
@@ -274,7 +279,7 @@ class PlaygroundView extends WorkView {
 
 				// create user key bindings
 				CodeEditor.keyBindings.forEach((binding) => {
-					CodeEditor.instance.addCommand(binding.key(monaco.KeyMod, monaco.KeyCode), () => {
+					CodeEditor.instance.addCommand(binding.key(monacoObj.KeyMod, monacoObj.KeyCode), () => {
 						CodeEditor.instance.trigger('editor', binding.command, null);
 					});
 				});
@@ -290,11 +295,11 @@ class PlaygroundView extends WorkView {
 	 * Start building Sidepanel
 	 */
 	createSidePanel(builder) {
-		this.installSidePanel().setWidth("350px");
+		this.installSidePanel(null).setWidth("350px");
 		//show it opened
 		this.toggleSidePanel();
 
-		let comps = {};
+		let comps: { [key: string]: any; } = {};
 		this.createSPanelMainLayout(builder, comps);
 		this.createSPanelHeadComp(builder, comps.sidePanelHead, comps);
 
@@ -331,7 +336,7 @@ class PlaygroundView extends WorkView {
 	/**
 	 */
 	createSPDataPanel(builder) {
-		let comps = {};
+		let comps: { [key: string]: any; } = {};
 		this.createSPDataPanelLayout(builder, comps)
 		this.createSPDataPanelArgsComp(builder, comps.dataPanelTop, comps);
 		this.createSPDataPanelAttachmentsComp(builder, comps.dataPanelTop, comps)
@@ -447,6 +452,7 @@ class PlaygroundView extends WorkView {
 				this.previewDialog.close();
 			}
 		}
+		return this.state.isCollapsed;
 	}
 
 	togglePreview() {
@@ -720,6 +726,7 @@ export let previewComp = null; // NOSONAR
 
 //execution context for plain js snippets
 const PlainJSContext = {
+	refId: "",
 	previewComp: null,
 	echo: echo
 };
@@ -730,7 +737,7 @@ const PlainJSContext = {
 class PreviewDialog extends ViewDialog {
 
 	constructor(parent) {
-		super("");
+		super();
 		this.parentElem = parent;
 		this.initialize();
 	}

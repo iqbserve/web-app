@@ -20,11 +20,11 @@ export class WsoCommonMessage {
 	bodydata = "";
 	attachments = {};
 
-	constructor(reference) {
+	constructor(reference: string) {
 		this.reference = reference;
 	}
 
-	hasReference(id) {
+	hasReference(id: string) {
 		return this.reference === id;
 	}
 
@@ -36,12 +36,12 @@ export class WsoCommonMessage {
 		return "error" === this.status.toLowerCase();
 	}
 
-	setStatusError(errorInfo) {
+	setStatusError(errorInfo: string) {
 		this.status = "error";
 		this.error = errorInfo;
 	}
 
-	addAttachment(key, value) {
+	addAttachment(key: string, value: any) {
 		this.attachments[key] = value;
 	}
 };
@@ -55,11 +55,11 @@ export class CommandDef {
 	script = "";
 	options = { args: false }
 
-	constructor(title, command, script, opt = {}) {
+	constructor(title: string, command: string, script: string, opt = {}) {
 		this.title = title;
 		this.command = command;
 		this.script = script;
-		this.options = {...this.options, ...opt};
+		this.options = { ...this.options, ...opt };
 	}
 };
 
@@ -69,13 +69,13 @@ export class CommandDef {
 export class ViewSource {
 	#file = "";
 	#html = null;
-	#htmlLoadListener = (viewSrc)=>{};
+	#htmlLoadListener = (viewSrc: ViewSource) => { };
 
-	constructor(file) {
+	constructor(file: string) {
 		this.#file = file;
 	}
 
-	setHtmlLoadListener(cb){
+	setHtmlLoadListener(cb: (viewSrc: ViewSource) => void) {
 		this.#htmlLoadListener = cb;
 	}
 
@@ -83,16 +83,16 @@ export class ViewSource {
 		return this.#html == null;
 	}
 
-	setHtml(html){
+	setHtml(html: string) {
 		this.#html = html;
 		this.#htmlLoadListener(this);
 	}
 
-	getHtml(){
+	getHtml() {
 		return this.#html;
 	}
 
-	getFile(){
+	getFile() {
 		return this.#file;
 	}
 

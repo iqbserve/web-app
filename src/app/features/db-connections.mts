@@ -4,7 +4,7 @@ import { Logger } from 'core/logging.mjs';
 import { WorkView } from 'core/view-classes.mjs';
 import { UIBuilder, onClicked, onInput } from 'core/uibuilder.mjs';
 import { WorkViewHtml } from 'core/view-templates.mjs';
-import * as Webapi from 'core/webapi.mjs';
+import * as Webapi from 'app/core/webapi.mjs';
 import * as Icons from 'core/icons.mjs';
 
 import { WorkbenchInterface as WbApp } from 'app/workbench.mjs';
@@ -14,9 +14,9 @@ import { WorkbenchInterface as WbApp } from 'app/workbench.mjs';
  */
 class DbConnectionsView extends WorkView {
 
-	builder;
-	//var to collect the built elements
-	elem = {};
+	builder: UIBuilder;
+	//ui element collections
+	elem: { [key: string]: any; } = {};
 
 	//the connection data objects
 	connections;
@@ -25,7 +25,7 @@ class DbConnectionsView extends WorkView {
 	//and the connections data for adding/removing items at once
 	conList;
 
-	constructor(id) {
+	constructor(id: string) {
 		super(id, null);
 		this.viewSource.setHtml(WorkViewHtml());
 	}
@@ -65,8 +65,8 @@ class DbConnectionsView extends WorkView {
 					.html("Define and edit database connection properties")
 			}).getDomElem();
 
-		this.createSelectionPanel(builder, compSet);
-		this.createPropertiesPanel(builder, compSet)
+		this.createSelectionPanel(builder, compSet, null);
+		this.createPropertiesPanel(builder, compSet, null);
 
 		this.createSidePanel(builder);
 
@@ -314,7 +314,7 @@ class DbConnectionsView extends WorkView {
 		}
 	}
 
-	showConnectionTestResult(status = -1, text = "") {
+	showConnectionTestResult(status: any = -1, text = "") {
 		let ctrl = this.elem.tfTestResult;
 		let okProps = { color: "green", resize: "none", width: "80px", height: ctrl.style["min-height"] };
 
