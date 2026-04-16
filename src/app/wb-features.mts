@@ -9,8 +9,8 @@ import { WorkbenchViewManager } from 'core/view-manager.mjs';
 /**
  * The module provides the user functionalities of the app
  */
-let WbFeatures: Record<string, LazyFunction> = {
-    systemLogin: new LazyFunction("app/workbench.mjs", "processSystemLogin").asFunction(),
+const WbFeatures: Record<string, LazyFunction> = {
+    systemLogin: new LazyFunction("app/workbench.mjs", "processSystemLogin").setToFunctionReturnMode(),
 
     systemInfos: new LazyFunction("features/system-infos.mjs", "getView"),
 
@@ -19,7 +19,7 @@ let WbFeatures: Record<string, LazyFunction> = {
     ),
     cmdSampleBuildProject: new LazyFunction("features/command.mjs", "getView",
         ["cmdSampleBuildProjectView", new CommandDef("Sample: [ js build script ]", "runjs", "/sample/build-project.mjs"),
-            new LazyFunction("features/cmdext-sample-build-project.mjs", "extendView").asFunction()
+            new LazyFunction("features/cmdext-sample-build-project.mjs", "extendView").setToFunctionReturnMode()
         ]
     ),
     cmdSampleExtension: new LazyFunction("features/command.mjs", "getView",
@@ -34,7 +34,7 @@ let WbFeatures: Record<string, LazyFunction> = {
  */
 export function callFeature(name: string, viewManager: WorkbenchViewManager) {
     if (WbFeatures[name]) {
-        let feature = WbFeatures[name];
+        const feature = WbFeatures[name];
         if (feature instanceof LazyFunction) {
             feature.invoke((retObj: WorkView | (() => void) | null) => {
                 if (retObj instanceof WorkView) {

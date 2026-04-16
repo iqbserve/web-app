@@ -1,14 +1,16 @@
 /* Authored by iqbserve.de */
 
 import { WorkView, StandardDialog } from 'core/view-classes.mjs';
+import { DialogMessage } from 'types/commons';
+
+/* Types */
+type ViewEntry = { view: WorkView, cart: HTMLElement }
 
 /**
  * <pre>
  * A simple manager for showing views in the app working area.
  * </pre>
  */
-type ViewEntry = { view: WorkView, cart: HTMLElement }
-
 export class WorkbenchViewManager {
 
 	#workarea: HTMLElement;
@@ -60,7 +62,7 @@ export class WorkbenchViewManager {
 			}
 
 			view.getViewElement((element) => {
-				let viewCart = this.#createViewCartridge(view.id, element);
+				const viewCart = this.#createViewCartridge(view.id, element);
 				this.#workarea.prepend(viewCart);
 				cb(viewEntry);
 			});
@@ -77,7 +79,7 @@ export class WorkbenchViewManager {
 
 	//the container dom element used by the view manager
 	#createViewCartridge(viewId, viewElement) {
-		let viewCart = document.createElement("div");
+		const viewCart = document.createElement("div");
 		viewCart.id = "view.cartridge." + viewId;
 		viewCart.style = "visibility: visible; display: block;"
 		viewCart.appendChild(viewElement);
@@ -96,8 +98,8 @@ export class WorkbenchViewManager {
 	}
 
 	#closeAllCloseableViews() {
-		for (let key in this.#registeredViews) {
-			let viewEntry = this.#registeredViews[key];
+		for (const key in this.#registeredViews) {
+			const viewEntry = this.#registeredViews[key];
 			if (viewEntry.cart) {
 				this.closeView(viewEntry.view);
 			}
@@ -105,8 +107,8 @@ export class WorkbenchViewManager {
 	}
 
 	#getVisibleChildren() {
-		let children: HTMLElement[] = [];
-		for (let child of Array.from(this.#workarea.children) as HTMLElement[]) {
+		const children: HTMLElement[] = [];
+		for (const child of Array.from(this.#workarea.children) as HTMLElement[]) {
 			if (child.style.display == "block") {
 				children.push(child);
 			}
@@ -119,7 +121,7 @@ export class WorkbenchViewManager {
 	}
 
 	stepViewsDown() {
-		let children = this.#getVisibleChildren();
+		const children = this.#getVisibleChildren();
 		if (children.length > 1) {
 			this.#workarea.insertBefore(children.at(-1), children[0]);
 			this.#scrollToTop();
@@ -127,7 +129,7 @@ export class WorkbenchViewManager {
 	}
 
 	stepViewsUp() {
-		let children = this.#getVisibleChildren();
+		const children = this.#getVisibleChildren();
 		if (children.length > 1) {
 			this.#workarea.insertBefore(children[0], null);
 			this.#scrollToTop();
@@ -135,12 +137,11 @@ export class WorkbenchViewManager {
 	}
 
 	moveView(view: WorkView, position: string) {
-		let elemCount = this.#workarea.children.length;
-		let viewCart = this.#registeredViews[view.id].cart;
-		let pos = -1;
+		const elemCount = this.#workarea.children.length;
+		const viewCart = this.#registeredViews[view.id].cart;
 
 		if (Number.isNaN(Number.parseInt(position))) {
-			let idx = 0;
+			let idx: number;
 			if (position === "up") {
 				idx = Array.prototype.indexOf.call(this.#workarea.children, viewCart) - 1;
 			} else if (position === "down") {
@@ -154,7 +155,7 @@ export class WorkbenchViewManager {
 			position = (idx + 1).toString();
 		}
 
-		pos = Number.parseInt(position);
+		let pos = Number.parseInt(position);
 		pos = pos <= 0 ? 1 : pos;
 
 		if (elemCount > 1) {
@@ -168,12 +169,12 @@ export class WorkbenchViewManager {
 		}
 	}
 
-	promptUserInput(text: string, value: string, cb: (value: string) => void) {
-		this.#standardDlg.openInput(text, value, cb);
+	promptUserInput(msg: DialogMessage, cb: (value: string) => void) {
+		this.#standardDlg.openInput(msg, cb);
 	}
 
-	promptConfirmation(text: string, cb: (value: boolean) => void) {
-		this.#standardDlg.openConfirmation(text, cb);
+	promptConfirmation(msg: DialogMessage, cb: (value: boolean) => void) {
+		this.#standardDlg.openConfirmation(msg, cb);
 	}
 }
 

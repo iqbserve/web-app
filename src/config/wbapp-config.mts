@@ -1,16 +1,18 @@
 /* Authored by iqbserve.de */
 
-/**
- * A simple config class.
- */
+import type { JSObject, PropertiesObject } from "types/commons";
+
+/* Types */
 type topic = { text: string, icon: string, items: { text: string, feature: string }[] };
 type workpanelItem = { text: string, icon: string, feature: string };
 
+/**
+ * A simple config class.
+ */
 export class WbAppConfig {
 
-    #properties: { [key: string]: string | boolean | number } = {};
-    #systemInfo: { [key: string]: string } = {};
-
+    #properties: JSObject = {};
+    #systemInfo: PropertiesObject = {};
     #topicList: topic[] = [];
     #workpanelItems: workpanelItem[] = [];
 

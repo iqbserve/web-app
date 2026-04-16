@@ -20,10 +20,14 @@
             ],
             "features/*": [
                 "app/features/*"
+            ],
+            "types/*": [
+                "types/*"
             ]
         }
     },
     "include": [
-        "src/app/**/*"
+        "src/app/**/*",
+        "src/types/**/*"
     ]
 }

@@ -42,7 +42,7 @@ class SystemInfoView extends WorkView {
 		super.initialize();
 		this.setTitle("System Infos");
 
-		let builder = new UIBuilder()
+		const builder = new UIBuilder()
 			.setCompPropDefaults((props) => {
 				props.get("label").styleProps = { "min-width": "80px", "text-align": "right" };
 			});
@@ -153,7 +153,7 @@ class SystemInfoView extends WorkView {
 		});
 
 		fieldset.addFromHtml(this.reworkHtml(tableHtml), (elems) => {
-			let tableElem = elems[0].firstElementChild;
+			const tableElem = elems[0].firstElementChild;
 			this.configTable = new WorkViewTableHandler(tableElem);
 		});
 
@@ -163,8 +163,8 @@ class SystemInfoView extends WorkView {
 	/**
 	 */
 	setActionsEnabled(flag) {
-		let ctrls = [this.configBoxElem.icoSave, this.configBoxElem.icoRedo];
-		let styleProps = flag ? { "pointer-events": "all", color: "" } : { "pointer-events": "none", color: "var(--border-gray)" };
+		const ctrls = [this.configBoxElem.icoSave, this.configBoxElem.icoRedo];
+		const styleProps = flag ? { "pointer-events": "all", color: "" } : { "pointer-events": "none", color: "var(--border-gray)" };
 
 		ctrls.forEach((ctrl) => UIBuilder.setStyleOf(ctrl, styleProps));
 	}
@@ -175,8 +175,8 @@ class SystemInfoView extends WorkView {
 		if (this.needsViewDataRefresh) {
 			clearConfigChanges();
 
-			let sysProps = data.sysProps;
-			let buildProps = data.buildProps;
+			const sysProps = data.sysProps;
+			const buildProps = data.buildProps;
 
 			this.appBoxElem.tfName.value = buildProps["appname"];
 			this.appBoxElem.tfVersion.value = `${buildProps["version"]} - Build [${buildProps["build.date"]} UTC]`;
@@ -184,12 +184,12 @@ class SystemInfoView extends WorkView {
 			this.appBoxElem.lnkReadMore.href = buildProps["readme.url"];
 
 			//create+build a table data object
-			let tableData = new TableData();
+			const tableData = new TableData();
 			// "data.config" has the structure: { name1:value1, name2:value2 ... }
 			// create a 2 column tableData from it
-			let names = Object.getOwnPropertyNames(sysProps);
+			const names = Object.getOwnPropertyNames(sysProps);
 			names.forEach((name) => {
-				let row = new Map();
+				const row = new Map();
 				//mark the read only key column to filter out 
 				row.set("key:" + name, name);
 				row.set(name, sysProps[name]);
@@ -197,26 +197,26 @@ class SystemInfoView extends WorkView {
 			})
 
 			//define cell editing on double click
-			tableData.cellDblClick = (rowKey, colKey, evt) => {
+			tableData.cellDblClick = (rowKey: string, colKey: string, evt: MouseEvent) => {
 
 				//editing only for the value column
 				if (!colKey.startsWith("key:")) {
 					//get the origin data from the data object (model)
-					let dataRow = tableData.rows.get(rowKey);
-					let dataValue = dataRow.get(colKey);
+					const dataRow = tableData.rows.get(rowKey);
+					const dataValue = dataRow.get(colKey);
 
 					//create+handle a simple cell input field
-					let cellElem = evt.currentTarget;
+					const cellElem = evt.currentTarget as HTMLElement;
 					if (cellElem.getElementsByTagName('input').length > 0) return;
 					//for simplicity use the html table cell value
-					let orgCellValue = cellElem.innerHTML;
+					const orgCellValue = cellElem.innerHTML;
 					cellElem.innerHTML = '';
 
-					let inputFieldProps = { booleanValue: typeUtil.booleanFromString(orgCellValue) };
-					let cellInput = this.configTable.newCellInputField(inputFieldProps);
+					const inputFieldProps = { booleanValue: typeUtil.booleanFromString(orgCellValue) };
+					const cellInput = this.configTable.newCellInputField(inputFieldProps);
 					cellInput.value = orgCellValue;
 
-					cellInput.onblur = (evt) => {
+					cellInput.onblur = () => {
 						let newValue = cellInput.value;
 						cellInput.comp.remove();
 						if (typeUtil.isBooleanString(newValue) && !typeUtil.isBooleanString(orgCellValue)) {
@@ -266,7 +266,7 @@ export function getView() {
 	return viewInstance;
 }
 
-let configChanges = new Map();
+const configChanges = new Map();
 let systemConfigData = null;
 
 /**
@@ -287,14 +287,14 @@ function getInfos(cb) {
 function updateInfos(request, cb) {
 	//do nothing in demo sample
 	//let jsonRquest = JSON.stringify(request);
-	let response = { status: "ok" };
+	const response = { status: "ok" };
 	cb(response);
 }
 
 /**
  */
 function clearConfigChanges(undo = false) {
-	configChanges.forEach((cell, key) => {
+	configChanges.forEach((cell) => {
 		cell.elem.style["border-left"] = "";
 		if (undo) { cell.elem.innerHTML = cell.orgData; };
 	});
@@ -305,7 +305,7 @@ function clearConfigChanges(undo = false) {
 /**
  */
 function ckeckConfigChange(key, orgVal, cellElem) {
-	let currentVal = cellElem.innerHTML;
+	const currentVal = cellElem.innerHTML;
 
 	if (orgVal === currentVal) {
 		configChanges.delete(key);
@@ -320,7 +320,7 @@ function ckeckConfigChange(key, orgVal, cellElem) {
 /**
  */
 function getUpdateRequest() {
-	let request = { "configChanges": {} };
+	const request = { "configChanges": {} };
 	configChanges.forEach((cell, key) => {
 		request.configChanges[key] = cell.elem.innerHTML;
 	});
@@ -328,7 +328,7 @@ function getUpdateRequest() {
 }
 
 
-let tableHtml = `
+const tableHtml = `
 <div class="wkv-fix-tblhead-container">
 	<table class="wkv" style="table-layout:fixed;">
 		<thead>

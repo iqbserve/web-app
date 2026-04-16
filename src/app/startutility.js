@@ -4,7 +4,7 @@
  * The object is mainly an error monitor to react to boostrapping errors,
  * especially module loading errors.
  */
-const WbStartUtility = (function () {
+globalThis.WbStartUtility = (function () {
 	class WbStartUtilityClass {
 		static instance = new WbStartUtilityClass();
 
@@ -12,12 +12,12 @@ const WbStartUtility = (function () {
 
 		#onPromiseError = (event) => {
 			this.close();
-			this.showError(event.reason, event);
+			this.showError(event.reason);
 		};
-		
+
 		#onOtherError = (event) => {
 			this.close();
-			this.showError(event.error, event);
+			this.showError(event.error);
 		};
 
 		setAppRootId(id) {
@@ -36,7 +36,7 @@ const WbStartUtility = (function () {
 			window.removeEventListener("error", this.#onOtherError);
 		}
 
-		showError(error, event) {
+		showError(error) {
 			document.documentElement.style.cursor = "default";
 			console.error(error);
 			let rootElement = document.getElementById(this.appRootId);

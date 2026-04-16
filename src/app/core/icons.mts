@@ -7,16 +7,16 @@
 /**
  * PUBLIC
  */
-export function getIconClasses(name: string, asClassString = false) {
-	let clazzes = iconClasses[name][0];
-	if (asClassString) {
-		return clazzes.join(" ");
-	}
-	return clazzes;
+export function getIconClasses(name: string): string[] {
+	return iconClasses[name][0];
 }
 
-export function getIconShapeClasses(name: string) {
+export function getIconShapeClasses(name: string): string[] {
 	return iconClasses[name][1];
+}
+
+export function getIconClassString(name: string): string {
+	return iconClasses[name][0].join(" ");
 }
 
 /**
@@ -75,7 +75,7 @@ function newConstantFunction(name: string) {
 		} else if (opt === "classes") {
 			return getIconClasses(name);
 		} else if (opt === "class") {
-			return getIconClasses(name, true);
+			return getIconClassString(name);
 		}
 		return name;
 	};

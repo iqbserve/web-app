@@ -2,14 +2,29 @@
 
 import { typeUtil, mergeArrayInto } from 'core/tools.mjs';
 import * as Icons from 'core/icons.mjs';
+import { JSObject } from 'types/commons';
+
+/* Types */
+export type UICompDef = {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    [key: string]: any;
+}
+
+export type UIElemProps = {
+    [key: string]: string;
+}
+
+export type UICompCb = (comp: UIComp, comp2?: UIComp) => void;
 
 /**
  */
 export function newUIId(prefix = null) {
-    let id = Math.random().toString(32).slice(5);
+    const id = Math.random().toString(32).slice(5);
     return prefix ? prefix + "-" + id : id;
 }
 
+/**
+ */
 export function reworkHtmlElementIds(html: string, contextIdVal: string, ignoreList = []) {
     html = html.replaceAll(/id\s*=\s*"([^"]*)"/g, (expr, val) => {
         if (!ignoreList.includes(val)) {
@@ -78,29 +93,29 @@ export class UIBuilder {
     allowedDefAttributes = ["name", "title", "value"];
 
     //instance variables
-    #defaultCompProps = new DefaultViewCompProps();
+    #defaultCompProps: DefaultCompProps = new DefaultViewCompProps();
 
     // true to collect UIComps not dom elems
     #UICompCollectionMode = false;
 
     //all elements with a varid are put to the collection
     //elem = elementCollection.<varid>
-    elementCollection = {};
+    elementCollection: JSObject = {};
 
     //collection for any objects
-    objectCollection = {};
+    objectCollection: JSObject = {};
     collectableAttributes = ["data-bind"];
 
     #UICompFactory = {
-        newComp: (builder, parentComp, domElem) => {
+        newComp: (builder: UIBuilder, parentComp: UIComp, domElem: HTMLElement) => {
             return new UIComp(builder, parentComp, domElem);
         }
     };
 
     static clearControl(domElem: HTMLElement) {
 
-        let tagName = domElem.tagName.toLowerCase();
-        let ctrl = null;
+        const tagName = domElem.tagName.toLowerCase();
+        let ctrl: HTMLInputElement | HTMLTextAreaElement;
         if (tagName === "input") {
             ctrl = domElem as HTMLInputElement;
             if (UIBuilder.#valueClearableInputTypes.includes(ctrl.type)) {
@@ -113,7 +128,7 @@ export class UIBuilder {
     }
 
     static createDomElementFrom(html: string, tagName = "template") {
-        let template = document.createElement(tagName);
+        const template = document.createElement(tagName);
         if (html) {
             template.innerHTML = html;
         }
@@ -124,42 +139,42 @@ export class UIBuilder {
     }
 
     static removeChildFrom(parent: HTMLElement, id: string) {
-        let node = UIBuilder.getChildFrom(parent, id);
+        const node = UIBuilder.getChildFrom(parent, id);
         if (node) { node.remove(); }
     }
 
     static getChildFrom(parent: HTMLElement, id: string) {
-        let children = Array.from(parent.childNodes) as HTMLElement[];
-        for (let child of children) {
+        const children = Array.from(parent.childNodes) as HTMLElement[];
+        for (const child of children) {
             if (child.id === id) { return child; }
         }
         return null;
     }
 
-    static reworkId(id) {
+    static reworkId(id: string) {
         if (!id || id === 'undefined' || id === "") {
             return Math.random().toString(32).slice(5);
         }
         return id;
     }
 
-    static setClassesOf(domElem, clazzes, defaultClazzes = null) {
+    static setClassesOf(domElem: HTMLElement, clazzes: string | string[], defaultClazzes: string | string[] = null) {
         if (typeUtil.isArray(clazzes)) {
-            clazzes.forEach(clazz => domElem.classList.add(clazz));
+            (clazzes as string[]).forEach(clazz => domElem.classList.add(clazz));
         } else if (clazzes) {
-            domElem.classList.add(clazzes.trim());
+            domElem.classList.add((clazzes as string).trim());
         } else if (defaultClazzes) {
             UIBuilder.setClassesOf(domElem, defaultClazzes, null);
         }
     }
 
-    static setStyleOf(domElem, styleProps) {
+    static setStyleOf(domElem: HTMLElement, styleProps: UIElemProps) {
         for (const name in styleProps) {
             domElem.style[name] = styleProps[name];
         }
     }
 
-    static setAttributesOf(domElem, attributeProps) {
+    static setAttributesOf(domElem: HTMLElement, attributeProps: UIElemProps) {
         for (const name in attributeProps) {
             if (UIBuilder.#setterAttributes.includes(name) || isDataAttribute(name)) {
                 domElem.setAttribute(name, attributeProps[name]);
@@ -176,9 +191,9 @@ export class UIBuilder {
         label.htmlFor = elem.id;
     }
 
-    static loadServerStyleSheet(path) {
+    static loadServerStyleSheet(path: string) {
         if (!UIBuilder.queries.hasStyleSheet(path)) {
-            let cssLink = document.createElement('link');
+            const cssLink = document.createElement('link');
             cssLink.rel = 'stylesheet';
             cssLink.type = 'text/css';
             cssLink.href = path;
@@ -189,27 +204,27 @@ export class UIBuilder {
     }
 
     static queries = {
-        findLabelByName: (rootElem, nameVal) => {
+        findLabelByName: (rootElem: HTMLElement, nameVal: string) => {
             return rootElem.querySelector(`label[name='${nameVal}']`);
         },
-        findElementByName: (rootElem, elemType, nameVal) => {
+        findElementByName: (rootElem: HTMLElement, elemType: string, nameVal: string) => {
             return rootElem.querySelector(`${elemType}[name='${nameVal}']`);
         },
-        findElementByName2: (rootElem, elemType, nameVal) => {
+        findElementByName2: (rootElem: HTMLElement, elemType: string, nameVal: string) => {
             return Array.from(rootElem.querySelectorAll(elemType))
-                .find(elem => (elem as any).name === nameVal);
+                .find(elem => elem["name"] === nameVal);
         },
-        hasStyleSheet: (path) => {
+        hasStyleSheet: (path: string) => {
             return !!document.head.querySelector(`link[rel="stylesheet"][href="${path}"]`);
         }
     }
 
-    setElementCollection(collection) {
+    setElementCollection(collection: JSObject) {
         this.elementCollection = collection;
         return this;
     }
 
-    setObjectCollection(collection) {
+    setObjectCollection(collection: JSObject) {
         this.objectCollection = collection;
         return this;
     }
@@ -223,7 +238,7 @@ export class UIBuilder {
         return this;
     }
 
-    collectElement(key, elem, comp = null) {
+    collectElement(key: string, elem: HTMLElement, comp: UIComp = null) {
         if (this.collectingDisabled()) { return; }
 
         if (this.#UICompCollectionMode && comp) {
@@ -233,7 +248,7 @@ export class UIBuilder {
         }
     }
 
-    collectObject(key, obj, context = null) {
+    collectObject(key: string, obj: unknown, context: string = null) {
         if (this.collectingDisabled()) { return; }
 
         if (context && !this.objectCollection[context]) {
@@ -249,10 +264,10 @@ export class UIBuilder {
     forEachElement(cb) {
         if (this.collectingDisabled()) { return; }
 
-        let elements = this.elementCollection;
-        let names = Object.getOwnPropertyNames(elements);
+        const elements = this.elementCollection;
+        const names = Object.getOwnPropertyNames(elements);
         names.forEach((name) => {
-            let domElem = elements[name];
+            const domElem = elements[name];
             cb(name, domElem);
         });
     }
@@ -260,25 +275,25 @@ export class UIBuilder {
     forEachBinding(cb) {
         if (this.collectingDisabled()) { return; }
 
-        let bindings = this.objectCollection["bindings"];
-        let names = Object.getOwnPropertyNames(bindings);
+        const bindings = this.objectCollection["bindings"];
+        const names = Object.getOwnPropertyNames(bindings);
         names.forEach((name) => {
-            let domElem = bindings[name];
+            const domElem = bindings[name];
             cb(name, domElem);
         });
     }
 
-    getDataListFor(name) {
+    getDataListFor(name: string) {
         if (this.collectingDisabled()) { return; }
         return this.objectCollection[this.elementCollection[name].list.id];
     }
 
-    setDefaultCompProps(compPropsObj) {
+    setDefaultCompProps(compPropsObj: DefaultCompProps) {
         this.#defaultCompProps = compPropsObj;
         return this;
     }
 
-    setCompPropDefaults(cb) {
+    setCompPropDefaults(cb: (compProps: DefaultCompProps) => void) {
         cb(this.#defaultCompProps);
         return this;
     }
@@ -291,18 +306,18 @@ export class UIBuilder {
         return this.#UICompFactory;
     }
 
-    setUICompFactory(factoryMethod) {
+    setUICompFactory(factoryMethod: (builder: UIBuilder, parentComp: UIComp, domElem: HTMLElement) => UIComp) {
         this.#UICompFactory.newComp = factoryMethod;
         return this;
     }
 
-    newUICompFor(domElem) {
+    newUICompFor(domElem: HTMLElement) {
         return this.#UICompFactory.newComp(this, null, domElem);
     }
 
-    newUIComp(typeId = "comp") {
-        let defaults = this.getDefaultCompProps().get(typeId);
-        let comp = this.#UICompFactory.newComp(this, null, null)
+    newUIComp(typeId: string = "comp") {
+        const defaults = this.getDefaultCompProps().get(typeId);
+        const comp = this.#UICompFactory.newComp(this, null, null)
             .initialize({ elemType: defaults.elemType, "typeId": typeId });
         return comp;
     }
@@ -315,7 +330,7 @@ export class UIComp {
     parentComp: UIComp;
     builder: UIBuilder;
 
-    addingListener: Function;
+    addingListener: (comp: UIComp, def: UICompDef) => void;
 
     constructor(builder: UIBuilder, parent: UIComp, domElem: HTMLElement = null) {
         this.builder = builder;
@@ -328,7 +343,8 @@ export class UIComp {
      * (def=dataobject, cb=callback function)
      * is retained
      */
-    resolveArgs(argDef, argCb, resultCb) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    resolveArgs(argDef: any, argCb: any, resultCb: any) {
         if (typeUtil.isFunction(argDef)) {
             argCb = argDef;
             argDef = {};
@@ -341,17 +357,17 @@ export class UIComp {
         resultCb(argDef, argCb);
     }
 
-    createDomElement(def) {
+    createDomElement(def: UICompDef) {
         this.domElem = document.createElement(def.elemType);
     }
 
-    applyDefProperties(def) {
+    applyDefProperties(def: UICompDef) {
         if (def.clazzes) {
             this.class(def.clazzes);
         }
 
-        let allowed = this.getBuilder().allowedDefAttributes;
-        let attributes = {};
+        const allowed = this.getBuilder().allowedDefAttributes;
+        const attributes = {};
         for (const key of Object.keys(def)) {
             if (allowed.includes(key) || isDataAttribute(key)) {
                 attributes[key] = def[key];
@@ -361,25 +377,25 @@ export class UIComp {
         UIBuilder.setAttributesOf(this.domElem, attributes);
     }
 
-    applyDefaulClasses(def) {
+    applyDefaulClasses(def: UICompDef) {
         if (!def.nodefaults) {
-            let defaultClasses = this.getDefaultCompProps().getClassesFor(def.typeId);
+            const defaultClasses = this.getDefaultCompProps().getClassesFor(def.typeId);
             if (defaultClasses) {
                 this.class(defaultClasses);
             }
         }
     }
 
-    applyDefaultStyle(def) {
+    applyDefaultStyle(def: UICompDef) {
         if (!def.nodefaults) {
-            let defaultStyle = this.getDefaultCompProps().getStylesFor(def.typeId);
+            const defaultStyle = this.getDefaultCompProps().getStylesFor(def.typeId);
             if (defaultStyle) {
                 this.style(defaultStyle);
             }
         }
     }
 
-    addElementToTarget(targetElem, elem, def) {
+    addElementToTarget(targetElem: HTMLElement, elem: HTMLElement, def: UICompDef) {
         if (def.pos == "top" || def.pos == 0) {
             targetElem.prepend(elem);
         } else if (def.pos > 0) {
@@ -389,19 +405,19 @@ export class UIComp {
         }
     }
 
-    registerElement(def, elem, comp) {
+    registerElement(def: UICompDef, elem: HTMLElement, comp: UIComp) {
         if (def.varid) {
             this.getBuilder().collectElement(def.varid, elem, comp);
         }
     }
 
-    registerObject(key, obj, context = null) {
+    registerObject(key: string, obj: unknown, context: string = null) {
         this.getBuilder().collectObject(key, obj, context);
     }
 
-    collectAttributesFrom(domElem) {
-        let names = this.getBuilder().collectableAttributes;
-        let value = null;
+    collectAttributesFrom(domElem: HTMLElement) {
+        const names = this.getBuilder().collectableAttributes;
+        let value: string;
         for (const name of names) {
             value = domElem.getAttribute(name);
             if (value && name === "data-bind") {
@@ -410,31 +426,31 @@ export class UIComp {
         }
     }
 
-    setAddingListener(listener) {
+    setAddingListener(listener: (comp: UIComp, def: UICompDef) => void) {
         this.addingListener = listener;
         return this;
     }
 
-    linkLabelToElement(label, elem) {
+    linkLabelToElement(label: HTMLElement, elem: HTMLElement) {
         UIBuilder.linkLabelToElement(label, elem);
     }
 
-    linkToLabel(label) {
+    linkToLabel(label: HTMLElement) {
         this.linkLabelToElement(label, this.domElem);
         return this;
     }
 
-    linkToElement(element) {
+    linkToElement(element: HTMLElement) {
         this.linkLabelToElement(this.domElem, element);
         return this;
     }
 
-    isReadOnly(def) {
-        return def.hasOwnProperty('readOnly');
+    isReadOnly(def: UICompDef) {
+        return Object.hasOwn(def, 'readOnly');
     }
 
-    newDataList(domElem, data) {
-        let datalist = new DataList(domElem);
+    newDataList(domElem: HTMLElement, data: unknown) {
+        const datalist = new DataList(domElem);
         datalist.setOptions(data);
         this.registerObject(datalist.listElem.id, datalist);
         return datalist;
@@ -443,21 +459,21 @@ export class UIComp {
     /**
      * central method
      */
-    addNewCompImpl(def) {
-        let comp = this.getBuilder().getUICompFactory().newComp(null, this, null)
+    addNewCompImpl(def: UICompDef) {
+        const comp = this.getBuilder().getUICompFactory().newComp(null, this, null)
             .initialize(def);
 
         this.addCompObjImpl(def, comp);
         return comp;
     }
 
-    addCompObjImpl(def, compObj) {
-        compObj.parent = this;
+    addCompObjImpl(def: UICompDef, compObj: UIComp) {
+        //compObj.parent = this; // TODO: check this
         this.registerElement(def, compObj.domElem, compObj);
         this.addElementToTarget(this.domElem, compObj.domElem, def);
     }
 
-    onAdding(comp, def) {
+    onAdding(comp: UIComp, def: UICompDef) {
         if (this.addingListener) {
             this.addingListener(comp, def);
         } else if (this.parentComp) {
@@ -465,21 +481,21 @@ export class UIComp {
         }
     }
 
-    finishAdd(def, comp) {
+    finishAdd(def: UICompDef, comp: UIComp) {
         this.onAdding(comp, def);
         return this;
     }
 
-    addContainerImpl(typeId, def, cb) {
+    addContainerImpl(typeId: string, def: UICompDef, cb: (comp: UIComp) => void) {
         def.elemType = def.elemType || this.getDefaultCompProps().get(typeId)?.elemType || "span";
         def.typeId = typeId;
 
-        let comp = this.addNewCompImpl(def);
+        const comp = this.addNewCompImpl(def);
         cb(comp);
         return this.finishAdd(def, comp);
     }
 
-    initialize(def) {
+    initialize(def: UICompDef) {
         this.createDomElement(def);
         this.applyDefaulClasses(def);
         this.applyDefaultStyle(def);
@@ -492,28 +508,28 @@ export class UIComp {
         return this;
     }
 
-    class(clazzes) {
+    class(clazzes: string | string[]) {
         UIBuilder.setClassesOf(this.domElem, clazzes);
         return this;
     }
 
-    attrib(attribProps) {
+    attrib(attribProps: UIElemProps) {
         UIBuilder.setAttributesOf(this.domElem, attribProps);
         this.collectAttributesFrom(this.domElem);
         return this;
     }
 
-    style(styleProps) {
+    style(styleProps: UIElemProps) {
         UIBuilder.setStyleOf(this.domElem, styleProps);
         return this;
     }
 
-    html(val) {
+    html(val: string) {
         if (val || val === "") { this.domElem.innerHTML = val };
         return this;
     }
 
-    title(val) {
+    title(val: string) {
         if (val || val === "") { this.domElem.title = val };
         return this;
     }
@@ -539,29 +555,29 @@ export class UIComp {
         return this.getBuilder().getDefaultCompProps();
     }
 
-    appendTo(elem) {
+    appendTo(elem: HTMLElement) {
         elem.append(this.domElem);
         return this;
     }
 
-    prependTo(elem) {
+    prependTo(elem: HTMLElement) {
         elem.prepend(this.domElem);
         return this;
     }
 
-    add(def: any, cb: any = null) {
+    add(def: string | UICompDef, cb: UICompCb = null) {
         this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
 
-        let comp = this.addNewCompImpl(def);
+        const comp = this.addNewCompImpl(def as UICompDef);
         cb(comp);
-        return this.finishAdd(def, comp);
+        return this.finishAdd(def as UICompDef, comp);
     }
 
     addFromHtml(html, cb = null) {
-        let template = document.createElement("template");
+        const template = document.createElement("template");
         template.innerHTML = html;
 
-        let elements = [...template.content.childNodes].filter(n => n.nodeType === Node.ELEMENT_NODE);
+        const elements = [...template.content.childNodes].filter(n => n.nodeType === Node.ELEMENT_NODE);
         for (const element of elements) {
             this.domElem.append(element);
         }
@@ -569,78 +585,78 @@ export class UIComp {
         return this;
     }
 
-    addContainer(def: any, cb: any = null) {
+    addContainer(def: UICompDef, cb: UICompCb = null) {
         this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
         return this.addContainerImpl("container", def, cb);
     }
 
-    addColContainer(def: any, cb: any = null) {
+    addColContainer(def: UICompDef, cb: UICompCb = null) {
         this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
         return this.addContainerImpl("colContainer", def, cb);
     }
 
-    addRowContainer(def: any, cb: any = null) {
+    addRowContainer(def: UICompDef, cb: UICompCb = null) {
         this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
         return this.addContainerImpl("rowContainer", def, cb);
     }
 
-    addDiv(def: any, cb: any = null) {
+    addDiv(def: UICompDef, cb: UICompCb = null) {
         this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
         def.elemType = "div";
         def.typeId = "div";
 
-        let comp = this.addNewCompImpl(def);
+        const comp = this.addNewCompImpl(def);
         cb(comp);
         return this.finishAdd(def, comp);
     }
 
-    addSpan(def: any, cb: any = null) {
+    addSpan(def: UICompDef, cb: UICompCb = null) {
         this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
         def.elemType = "span";
         def.typeId = "span";
 
-        let comp = this.addNewCompImpl(def);
+        const comp = this.addNewCompImpl(def);
         cb(comp);
         return this.finishAdd(def, comp);
     }
 
-    addSeparator(def: any, cb: any = null) {
+    addSeparator(def: UICompDef, cb: UICompCb = null) {
         this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
         def.elemType = "hr";
         def.typeId = "hr";
 
-        let comp = this.addNewCompImpl(def);
+        const comp = this.addNewCompImpl(def);
         cb(comp);
         return this.finishAdd(def, comp);
     }
 
-    addList(def: any, cb: any = null) {
+    addList(def: UICompDef, cb: UICompCb = null) {
         this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
         def.elemType = def.elemType || "ul";
         def.typeId = "list";
 
-        let comp = this.addNewCompImpl(def);
+        const comp = this.addNewCompImpl(def);
         cb(comp);
         return this.finishAdd(def, comp);
     }
 
-    addLink(def: any, cb: any = null) {
+    addLink(def: UICompDef, cb: UICompCb = null) {
         this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
         def.elemType = "a";
         def.typeId = "link";
 
-        let comp = this.addNewCompImpl(def);
+        const comp = this.addNewCompImpl(def);
         if (def.text) { comp.html(def.text); }
 
         cb(comp);
         return this.finishAdd(def, comp);
     }
 
-    addFontIconImpl(type: string, def: any, cb: any = null) {
+    addFontIconImpl(type: string, def: UICompDef, cb: UICompCb = null) {
         def.elemType = "a-icon";
         def.typeId = type;
 
-        let comp = this.addNewCompImpl(def);
+        const comp = this.addNewCompImpl(def);
         if (def.iconName) {
             comp.domElem.setAttribute("iconname", def.iconName);
         }
@@ -649,24 +665,24 @@ export class UIComp {
         return this.finishAdd(def, comp);
     }
 
-    addActionIcon(def: any, cb: any = null) {
+    addActionIcon(def: UICompDef, cb: UICompCb = null) {
         this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
         return this.addFontIconImpl("actionIcon", def, cb);
     }
 
-    addFontIcon(def: any, cb: any = null) {
+    addFontIcon(def: UICompDef, cb: UICompCb = null) {
         this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
         return this.addFontIconImpl("fontIcon", def, cb);
     }
 
-    addFieldset(def: any, cb: any = null) {
+    addFieldset(def: UICompDef, cb: UICompCb = null) {
         this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
         def.elemType = "fieldset";
         def.typeId = def.title ? "titledFieldset" : "fieldset";
 
-        let comp = this.addNewCompImpl(def);
+        const comp = this.addNewCompImpl(def);
         if (def.title) {
-            let legend = document.createElement("legend");
+            const legend = document.createElement("legend");
             legend.innerHTML = def.title;
             comp.domElem.append(legend);
         }
@@ -675,14 +691,14 @@ export class UIComp {
         return this.finishAdd(def, comp);
     }
 
-    addGroup(def: any, cb: any = null) {
+    addGroup(def: UICompDef, cb: UICompCb = null) {
         this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
         def.elemType = "fieldset";
         def.typeId = def.title ? "titledGroup" : "group";
 
-        let comp = this.addNewCompImpl(def);
+        const comp = this.addNewCompImpl(def);
         if (def.title) {
-            let legend = document.createElement("legend");
+            const legend = document.createElement("legend");
             legend.innerHTML = def.title;
             comp.domElem.append(legend);
         }
@@ -691,12 +707,12 @@ export class UIComp {
         return this.finishAdd(def, comp);
     }
 
-    addLabel(def: any, cb: any = null) {
+    addLabel(def: UICompDef, cb: UICompCb = null) {
         this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
         def.elemType = def.elemType || "label";
         def.typeId = def.typeId || "label";
 
-        let comp = this.addNewCompImpl(def);
+        const comp = this.addNewCompImpl(def);
         if (def.text) { comp.html(def.text); }
         if (def.active === false) {
             comp.style({ "pointer-events": "none" });
@@ -706,12 +722,12 @@ export class UIComp {
         return this.finishAdd(def, comp);
     }
 
-    addCheckBox(def: any, cb: any = null) {
+    addCheckBox(def: UICompDef, cb: UICompCb = null) {
         this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
         def.elemType = "input";
         def.typeId = "checkBox";
 
-        let comp = this.addNewCompImpl(def);
+        const comp = this.addNewCompImpl(def);
         comp.domElem.type = "checkbox";
         comp.domElem.id = UIBuilder.reworkId(def.id);
         if (def.active === false) {
@@ -722,12 +738,12 @@ export class UIComp {
         return this.finishAdd(def, comp);
     }
 
-    addRadioButton(def: any, cb: any = null) {
+    addRadioButton(def: UICompDef, cb: UICompCb = null) {
         this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
         def.elemType = "input";
         def.typeId = "radioButton";
 
-        let comp = this.addNewCompImpl(def);
+        const comp = this.addNewCompImpl(def);
         comp.domElem.type = "radio";
         comp.domElem.id = UIBuilder.reworkId(def.id);
         if (def.active === false) {
@@ -738,12 +754,12 @@ export class UIComp {
         return this.finishAdd(def, comp);
     }
 
-    addTextField(def: any, cb: any = null) {
+    addTextField(def: UICompDef, cb: UICompCb = null) {
         this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
         def.elemType = "input";
         def.typeId = "textField";
 
-        let comp = this.addNewCompImpl(def);
+        const comp = this.addNewCompImpl(def);
         comp.domElem.type = "text";
         comp.domElem.id = UIBuilder.reworkId(def.id);
 
@@ -753,7 +769,7 @@ export class UIComp {
         }
 
         if (def.datalist) {
-            let datalist = this.newDataList(comp.domElem, def.datalist);
+            const datalist = this.newDataList(comp.domElem, def.datalist);
             this.domElem.prepend(datalist.listElem);
         }
 
@@ -761,12 +777,12 @@ export class UIComp {
         return this.finishAdd(def, comp);
     }
 
-    addButton(def: any, cb: any = null) {
+    addButton(def: UICompDef, cb: UICompCb = null) {
         this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
         def.elemType = "button";
         def.typeId = def.typeId == "button" || def.typeId == "tabButton" ? def.typeId : "button";
 
-        let comp = this.addNewCompImpl(def);
+        const comp = this.addNewCompImpl(def);
         comp.domElem.type = "button";
         comp.domElem.id = UIBuilder.reworkId(def.id);
 
@@ -774,7 +790,7 @@ export class UIComp {
         comp.html(def.text);
 
         if (def.iconName) {
-            let iconClasses = [...Icons.getIconClasses(def.iconName), "wkv-button-icon"];
+            const iconClasses = [...Icons.getIconClasses(def.iconName), "wkv-button-icon"];
             comp.class(iconClasses);
         }
 
@@ -782,19 +798,19 @@ export class UIComp {
         return this.finishAdd(def, comp);
     }
 
-    addTabButton(def: any, cb: any = null) {
+    addTabButton(def: UICompDef, cb: UICompCb = null) {
         this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
         def.elemType = "button";
         def.typeId = "tabButton";
         return this.addButton(def, cb);
     }
 
-    addTextArea(def: any, cb: any = null) {
+    addTextArea(def: UICompDef, cb: UICompCb = null) {
         this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
         def.elemType = "textarea";
         def.typeId = "textArea";
 
-        let comp = this.addNewCompImpl(def);
+        const comp = this.addNewCompImpl(def);
         comp.domElem.rows = def.rows;
         comp.domElem.id = UIBuilder.reworkId(def.id);
 
@@ -807,11 +823,11 @@ export class UIComp {
         return this.finishAdd(def, comp);
     }
 
-    addLabelTextField(labelDef: any, fieldDef: any, cb: any = null) {
+    addLabelTextField(labelDef: UICompDef, fieldDef: UICompDef, cb: UICompCb = null) {
         this.resolveArgs(labelDef, cb, (resDef, resCb) => { labelDef = resDef; cb = resCb; });
         this.resolveArgs(fieldDef, cb, (resDef, resCb) => { fieldDef = resDef; cb = resCb; });
 
-        let newComp = { label: null, textField: null };
+        const newComp = { label: null, textField: null };
         this.addLabel(labelDef, (comp) => { newComp.label = comp; });
         this.addTextField(fieldDef, (comp) => { newComp.textField = comp; });
 
@@ -821,11 +837,11 @@ export class UIComp {
         return this;
     }
 
-    addLabelTextArea(labelDef: any, areaDef: any, cb: any = null) {
+    addLabelTextArea(labelDef: UICompDef, areaDef: UICompDef, cb: UICompCb = null) {
         this.resolveArgs(labelDef, cb, (resDef, resCb) => { labelDef = resDef; cb = resCb; });
         this.resolveArgs(areaDef, cb, (resDef, resCb) => { areaDef = resDef; cb = resCb; });
 
-        let newComp = { label: null, textArea: null };
+        const newComp = { label: null, textArea: null };
         this.addLabel(labelDef, (comp) => { newComp.label = comp });
         this.addTextArea(areaDef, (comp) => { newComp.textArea = comp });
 
@@ -835,13 +851,13 @@ export class UIComp {
         return this;
     }
 
-    addLabelButton(labelDef: any, buttonDef: any, cb: any = null) {
+    addLabelButton(labelDef: UICompDef, buttonDef: UICompDef, cb: UICompCb = null) {
         this.resolveArgs(labelDef, cb, (resDef, resCb) => { labelDef = resDef; cb = resCb; });
         this.resolveArgs(buttonDef, cb, (resDef, resCb) => { buttonDef = resDef; cb = resCb; });
 
-        let newComp = { label: null, button: null };
+        const newComp = { label: null, button: null };
         //by default deactivate label for buttons
-        if (!labelDef.hasOwnProperty("active")) {
+        if (!Object.hasOwn(labelDef, "active")) {
             labelDef.active = false;
         }
         this.addLabel(labelDef, (comp) => { newComp.label = comp });
@@ -871,7 +887,7 @@ export class DataList {
     }
 
     #newOption(item) {
-        let option = document.createElement("option");
+        const option = document.createElement("option");
         option.id = item.id ? item.id : item;
         option.value = item.value ? item.value : option.id;
         return option;
@@ -890,7 +906,7 @@ export class DataList {
     }
 
     addOption(item) {
-        let id = item.id ? item.id : item;
+        const id = item.id ? item.id : item;
         let option = UIBuilder.getChildFrom(this.listElem, id);
         if (option === null) {
             option = this.#newOption(item);
@@ -958,7 +974,7 @@ export function onFocus(elem, action) {
 export class DefaultCompProps {
 
     static makeACopyOf(source) {
-        let newProps = { ...source };
+        const newProps = { ...source };
         newProps.clazzes = mergeArrayInto(newProps.clazzes, source.clazzes);
         newProps.attribProps = source.attribProps ? { ...source.attribProps } : {};
         newProps.styleProps = source.styleProps ? { ...source.styleProps } : {};
@@ -1000,7 +1016,7 @@ export class DefaultCompProps {
         return this[id];
     }
 
-    apply(ids, srcProps, cb) {
+    apply(ids, srcProps) {
         let targetProps;
         for (const id of ids) {
             targetProps = this[id];

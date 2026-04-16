@@ -2,11 +2,14 @@
 
 import { Logger } from 'core/logging.mjs';
 import { findChildOf, setVisibility, setDisplay, typeUtil, fileUtil } from 'core/tools.mjs';
-import { ViewSource } from 'core/data-classes.mjs';
+import { DataFile, ViewSource } from 'core/data-classes.mjs';
 import { UIBuilder, onClicked, onDblClicked, DefaultCompProps, ContextId, newUIId, reworkHtmlElementIds } from 'core/uibuilder.mjs';
 import * as Icons from 'core/icons.mjs';
 
 import { WorkbenchInterface as WbApp } from 'app/workbench.mjs';
+
+/* Types */
+import type { DialogMessage, JSObject, PropertiesObject } from 'types/commons';
 
 /**
  * Internal section
@@ -25,15 +28,12 @@ export function loadServerStyleSheet(path) {
 	UIBuilder.loadServerStyleSheet(path);
 }
 
-type PropertyObject = {
-	[key: string]: any;
-}
-
 /**
  * A basic view class. 
  */
 export class AbstractView {
-	//support for dynamic properties
+	//support for dynamic properties on this
+	// eslint-disable-next-line @typescript-eslint/no-explicit-any
 	[key: string]: any;
 
 	//an automatic uid 
@@ -41,11 +41,11 @@ export class AbstractView {
 	//a custom id
 	id = "";
 	viewSource = new ViewSource("");
-	viewElement = null;
+	viewElement: HTMLElement;
 	//the obligatory flag to control the init sequence
 	isInitialized = false;
 
-	constructor(id, file = null) {
+	constructor(id: string, file: string = null) {
 		this.id = id;
 		this.viewSource = new ViewSource(file);
 		this.isInitialized = false;
@@ -53,7 +53,7 @@ export class AbstractView {
 
 	createViewElementFor(view, html) {
 		if (html) {
-			let template = document.createElement("template");
+			const template = document.createElement("template");
 			template.innerHTML = html;
 			view.viewElement = template.content.firstElementChild;
 			if (view instanceof AbstractView) {
@@ -73,7 +73,7 @@ export class AbstractView {
 	/**
 	 * Get and lazy create the view dom element.
 	 */
-	getViewElement(cb = (elem) => { }) {
+	getViewElement(cb: (elem: HTMLElement) => void) {
 		if (this.needsInitialization()) {
 			this.getViewHtml(this.viewSource, (html) => {
 				html = this.reworkHtml(html);
@@ -174,11 +174,11 @@ export class WorkView extends AbstractView {
 		this.viewWorkarea = this.getElement("work-view-workarea");
 		this.bodyInitialDisplay = this.viewBody.style.display;
 
-		let builder = new UIBuilder().setElementCollection(this);
+		const builder = new UIBuilder().setElementCollection(this);
 		builder.newUICompFor(this.viewBody)
 			.addDiv({ varid: "disableOverlay", clazzes: "work-view-disable-overlay" }, (divComp) => {
 				divComp.addSpan((textComp) => {
-					divComp.domElem.setWorkingText = (text) => {
+					divComp.domElem["setWorkingText"] = (text) => {
 						textComp.html(text);
 					}
 				})
@@ -186,32 +186,32 @@ export class WorkView extends AbstractView {
 
 		this.viewHeader = new WorkViewHeader(this, this.state);
 		this.viewHeader.rightIconBar((bar) => {
-			bar.addIcon({ id: "close.icon", title: "Close view" }, Icons.close(), (evt) => {
+			bar.addIcon({ id: "close.icon", title: "Close view" }, Icons.close(), () => {
 				this.viewManager.closeView(this);
 			});
-			bar.addIcon({ id: "pin.icon", title: "Pin to keep view" }, Icons.pin(), (evt) => {
-				this.togglePinned(evt);
+			bar.addIcon({ id: "pin.icon", title: "Pin to keep view" }, Icons.pin(), () => {
+				this.togglePinned();
 			});
-			bar.addIcon({ id: "collapse.icon", title: "Collapse view" }, Icons.collapse(), (evt) => {
-				this.toggleCollapsed(evt);
+			bar.addIcon({ id: "collapse.icon", title: "Collapse view" }, Icons.collapse(), () => {
+				this.toggleCollapsed();
 			});
 		});
 
 		this.viewHeader.menu((menu) => {
 			if (this.viewManager) {
 				menu
-					.addItem("Close", (evt) => {
+					.addItem("Close", () => {
 						this.viewManager.closeView(this);
 					}, { separator: "bottom" })
 
-					.addItem("Move up", (evt) => {
+					.addItem("Move up", () => {
 						this.viewManager.moveView(this, "up");
 					})
-					.addItem("Move down", (evt) => {
+					.addItem("Move down", () => {
 						this.viewManager.moveView(this, "down");
 					})
-					.addItem("Move to ...", (evt) => {
-						this.viewManager.promptUserInput({ title: "", message: "Please enter your desired position number:" }, "1",
+					.addItem("Move to ...", () => {
+						this.viewManager.promptUserInput({ title: "", message: "Please enter your desired position number:", data: "1" },
 							(value) => value ? this.viewManager.moveView(this, value) : null
 						);
 					});
@@ -219,7 +219,7 @@ export class WorkView extends AbstractView {
 		});
 	}
 
-	open(data = null) {
+	open() {
 		this.viewHeader.menu().close();
 		this.state.isOpen = true;
 	}
@@ -232,7 +232,7 @@ export class WorkView extends AbstractView {
 		return this.isCloseable();
 	}
 
-	isCloseable(ctxObj = null) {
+	isCloseable() {
 		return !(this.state.isRunning || this.state.isPinned);
 	}
 
@@ -241,7 +241,7 @@ export class WorkView extends AbstractView {
 		this.viewHeader.showRunning(flag);
 	}
 
-	setDisabled(flag, options: any = {}) {
+	setDisabled(flag: boolean, options: PropertiesObject = {}) {
 		options = { cursor: "wait", text: "Just a moment please ...", ...options }
 		if (this.disableOverlay) {
 			this.setDisplay(this.disableOverlay, flag ? "flex" : false);
@@ -261,15 +261,15 @@ export class WorkView extends AbstractView {
 		}
 
 		this.viewHeader.rightIconBar((bar) => {
-			bar.addIcon({ id: "sidepanel.icon", title: "Show/Hide Sidepanel" }, Icons.wkvSidePanel(), (evt) => {
-				this.toggleSidePanel(evt);
+			bar.addIcon({ id: "sidepanel.icon", title: "Show/Hide Sidepanel" }, Icons.wkvSidePanel(), () => {
+				this.toggleSidePanel();
 			});
 		});
 
 		return this.sidePanel;
 	}
 
-	toggleSidePanel(evt = null) {
+	toggleSidePanel() {
 		this.sidePanel.toggle();
 		this.viewHeader.icons["sidepanel.icon"].switch({
 			flag: this.sidePanel.isOpen(), cb: (icon, flag) => {
@@ -278,7 +278,7 @@ export class WorkView extends AbstractView {
 		});
 	}
 
-	togglePinned(evt = null) {
+	togglePinned() {
 		this.state.isPinned = !this.state.isPinned;
 		this.viewHeader.icons["pin.icon"].switch({
 			flag: this.state.isPinned, cb: (icon, flag) => {
@@ -290,13 +290,13 @@ export class WorkView extends AbstractView {
 		return this.state.isPinned;
 	}
 
-	toggleCollapsed(evt = null) {
+	toggleCollapsed() {
 		this.state.isCollapsed = !this.state.isCollapsed;
 		this.viewHeader.container.classList.toggle("work-view-collapsed-header");
 
 		this.viewHeader.icons["collapse.icon"].switch({
 			flag: this.state.isCollapsed, cb: (icon, flag) => {
-				let displayVal = flag ? "none" : this.bodyInitialDisplay;
+				const displayVal = flag ? "none" : this.bodyInitialDisplay;
 
 				icon.title = flag ? "Expand view" : "Collapse  view";
 				this.viewHeader.icons["sidepanel.icon"]?.setEnabled(!flag);
@@ -389,9 +389,9 @@ export class WorkViewHeader {
 		return this.headerMenu;
 	}
 
-	showRunning(flag = null) {
-		let classList = this.progressBar.firstElementChild.classList;
-		let clazz = "progress-showWorking";
+	showRunning() {
+		const classList = this.progressBar.firstElementChild.classList;
+		const clazz = "progress-showWorking";
 		classList.toggle(clazz);
 		if (!this.viewState.isRunning && classList.contains(clazz)) {
 			Logger.warn("isRunning flag mismatch");
@@ -436,7 +436,7 @@ export class WorkViewSidepanel {
 	}
 
 	#isClosed() {
-		let val = this.splitterElem.style.display;
+		const val = this.splitterElem.style.display;
 		return (!val || val == "none");
 	}
 
@@ -496,7 +496,7 @@ export class WorkViewHeaderMenu {
 			this.#onAnyCloseTriggerEvent(evt)
 		});
 		window.addEventListener("mousedown", (evt) => {
-			let elem = evt.target as HTMLElement;
+			const elem = evt.target as HTMLElement;
 			if (elem.classList.contains("splitter")) {
 				this.#onAnyCloseTriggerEvent(evt)
 			}
@@ -513,7 +513,7 @@ export class WorkViewHeaderMenu {
 	}
 
 	#positionMenu(evt) {
-		let trigger = evt.currentTarget;
+		const trigger = evt.currentTarget;
 		const rect = trigger.getBoundingClientRect();
 		this.#menuElem.style.top = `${window.scrollY + rect.top - 10}px`;
 		this.#menuElem.style.left = `${window.scrollX + rect.right + 10}px`;
@@ -535,8 +535,8 @@ export class WorkViewHeaderMenu {
 		return this.#menuElem?.children.length > 0;
 	}
 
-	addItem(text, cb, props: PropertyObject = {}) {
-		let item = document.createElement("a");
+	addItem(text, cb, props: PropertiesObject = {}) {
+		const item = document.createElement("a");
 		item.href = "view: " + text;
 		item.innerHTML = text;
 
@@ -548,7 +548,7 @@ export class WorkViewHeaderMenu {
 		});
 
 		if (props?.separator) {
-			let clazz = props.separator === "top" ? "menu-separator-top" : "menu-separator-bottom";
+			const clazz = props.separator === "top" ? "menu-separator-top" : "menu-separator-bottom";
 			item.classList.add(clazz);
 		}
 
@@ -620,7 +620,7 @@ export class ViewDialog extends AbstractView {
 	}
 
 	initListener() {
-		this.#dialogElem.addEventListener('toggle', (event) => {
+		this.#dialogElem.addEventListener('toggle', () => {
 			this.listener.forEach((cb) => { cb(this) })
 		});
 	}
@@ -629,7 +629,7 @@ export class ViewDialog extends AbstractView {
 	 * the dialog standard layout
 	 */
 	createDefaultContentContainer() {
-		let builder = new UIBuilder()
+		const builder = new UIBuilder()
 			//using this as target for ui builder var collecting
 			//any "varid" gets a property of this
 			.setUICompCollectionMode() //collect UIComps
@@ -684,8 +684,8 @@ export class ViewDialog extends AbstractView {
 	}
 
 	showRunning(flag = null) {
-		let classList = this.progressBar.domElem.firstElementChild.classList;
-		let clazz = "progress-showWorking";
+		const classList = this.progressBar.domElem.firstElementChild.classList;
+		const clazz = "progress-showWorking";
 		if (flag && !classList.contains(clazz)) {
 			classList.add(clazz);
 		} else if (!flag) {
@@ -792,17 +792,17 @@ export class StandardDialog extends ViewDialog {
 	}
 
 	#setupStandardActions(cb, isInput = false) {
-		onClicked(this.pbOk, (evt) => {
+		onClicked(this.pbOk, () => {
 			this.close();
 			cb(isInput ? this.inputField.value : true);
 		});
 
-		onClicked(this.pbCancel, (evt) => {
+		onClicked(this.pbCancel, () => {
 			this.close();
 			cb(null);
 		});
 
-		onClicked(this.closeIcon, (evt) => {
+		onClicked(this.closeIcon, () => {
 			this.close();
 			cb(null);
 		});
@@ -812,43 +812,28 @@ export class StandardDialog extends ViewDialog {
 		//do not save last position
 	}
 
-	openConfirmation(text, cb) {
-		let title = "Confirmation required";
+	openConfirmation(msg: DialogMessage, cb: (value: boolean) => void) {
 		this.pbOk.html("Yes");
 		this.pbCancel.html("No");
-
 		this.#setupStandardActions(cb);
 
-		if (typeUtil.isString(text)) {
-			this.setTitle(title);
-			this.viewArea.html(`<p>${text}</p>`);
-		} else {
-			this.setTitle(text.title ? text.title : title);
-			this.viewArea.html(`<p>${text?.message}</p>`);
-		}
+		this.setTitle(msg.title ? msg.title : "Confirmation required");
+		this.viewArea.html(`<p>${msg.message}</p>`);
 
 		this.openModal(null);
 	}
 
-	openInput(text, value, cb) {
+	openInput(msg: DialogMessage, cb: (value: string) => void) {
 		this.pbOk.html("Ok");
 		this.pbCancel.html("Cancel");
-		let title = "Input";
-		let inputId = "standard-dialog-input";
+		const inputId = "standard-dialog-input";
 
-		if (!value) { value = "" };
+		const value = msg.data ? msg.data : "";
 
 		this.#setupStandardActions(cb, true);
-
-		if (typeUtil.isString(text)) {
-			this.setTitle(title);
-			this.viewArea.html(`<p class="std-inputdlg-text">${text}</p> 
+		this.setTitle(msg.title ? msg.title : "Input");
+		this.viewArea.html(`<p class="std-inputdlg-text">${msg.message}</p>
 			<input type="text" id="${inputId}" class="std-dlg-textfield" value="${value}">`);
-		} else {
-			this.setTitle(text.title ? text.title : title);
-			this.viewArea.html(`<p class="std-inputdlg-text">${text?.message}</p>
-			<input type="text" id="${inputId}" class="std-dlg-textfield" value="${value}">`);
-		}
 
 		this.inputField = findChildOf(this.dialog(), inputId);
 
@@ -867,6 +852,7 @@ export class WorkViewTableHandler {
 	ascOrder = false;
 	sortIcon;
 
+
 	constructor(tableElem) {
 		this.tableElem = tableElem;
 		this.tableBody = this.tableElem.querySelector('tbody');
@@ -883,14 +869,14 @@ export class WorkViewTableHandler {
 		this.tableData = tableData;
 
 		this.tableData.rows.forEach((rowData, rowKey) => {
-			let row = document.createElement("tr");
+			const row = document.createElement("tr");
 			row.className = "wkv";
 
 			rowData.forEach((colVal, colKey) => {
-				let col = document.createElement("td");
+				const col: HTMLTableCellElement = document.createElement("td");
 				col.className = "wkv";
 				col.innerHTML = colVal;
-				(col as any).value = colKey;
+				(col as JSObject).value = colKey;
 				onClicked(col, (evt) => { this.tableData.cellClick(rowKey, colKey, evt); });
 				onDblClicked(col, (evt) => { this.tableData.cellDblClick(rowKey, colKey, evt); });
 				row.appendChild(col);
@@ -907,11 +893,11 @@ export class WorkViewTableHandler {
 
 	sortByColumn(colIdx) {
 		this.ascOrder = !this.ascOrder;
-		let rows = Array.from(this.tableBody.querySelectorAll('tr'));
+		const rows = Array.from(this.tableBody.querySelectorAll('tr'));
 
 		rows.sort((rowA: HTMLElement, rowB: HTMLElement) => {
-			let cellA = rowA.querySelectorAll('td')[colIdx].textContent.trim();
-			let cellB = rowB.querySelectorAll('td')[colIdx].textContent.trim();
+			const cellA = rowA.querySelectorAll('td')[colIdx].textContent.trim();
+			const cellB = rowB.querySelectorAll('td')[colIdx].textContent.trim();
 
 			return this.ascOrder ? cellA.localeCompare(cellB) : cellB.localeCompare(cellA);
 		});
@@ -920,27 +906,27 @@ export class WorkViewTableHandler {
 		this.tableBody.append(...rows);
 	}
 
-	toggleColSort(colIdx) {
+	toggleColSort() {
 		this.sortIcon.switch();
 	}
 
 	filterRows(colIdx, filterText) {
-		let rows = Array.from(this.tableBody.querySelectorAll('tr'));
-		let filter = filterText.toLowerCase();
+		const rows = Array.from(this.tableBody.querySelectorAll('tr'));
+		const filter = filterText.toLowerCase();
 
 		rows.forEach((row: HTMLElement) => {
-			let cellVal = row.querySelectorAll('td')[colIdx].textContent;
+			const cellVal = row.querySelectorAll('td')[colIdx].textContent;
 			row.style.display = cellVal.toLowerCase().includes(filter) ? "" : "none";
 		});
 	}
 
-	newCellInputField(props: PropertyObject = {}) {
-		let comp = document.createElement('span');
-		let ctrl = document.createElement('input');
+	newCellInputField(props: JSObject = {}) {
+		const comp: HTMLSpanElement = document.createElement('span');
+		const ctrl: HTMLInputElement = document.createElement('input');
 
 		props = { clazz: "wkv-tblcell-edit-tf", booleanValue: null, datalist: [], ...props };
 
-		(ctrl as any).comp = comp;
+		(ctrl as JSObject).comp = comp;
 		ctrl.type = "text";
 		ctrl.classList.add(props.clazz ? props.clazz : "wkv-tblcell-edit-tf");
 		comp.append(ctrl);
@@ -949,10 +935,10 @@ export class WorkViewTableHandler {
 			ctrl.type = "checkbox";
 			ctrl.checked = props.booleanValue;
 			ctrl.style.width = "20px";
-			onClicked(ctrl, (evt) => { ctrl.value = typeUtil.stringFromBoolean(ctrl.checked) });
+			onClicked(ctrl, () => { ctrl.value = typeUtil.stringFromBoolean(ctrl.checked) });
 		} else if (props.datalist?.length > 0) {
 			let item = null;
-			let dataElem = document.createElement("datalist");
+			const dataElem = document.createElement("datalist");
 			dataElem.id = newUIId();
 			props.datalist.forEach(entry => {
 				item = document.createElement("option");
@@ -972,14 +958,14 @@ export class WorkViewTableHandler {
  *  - each row a map of columns (key:column)
  */
 export class TableData {
-	rows;
-	cellClick;
-	cellDblClick;
+	rows: Map<string, Map<string, HTMLTableRowElement>>;
+	cellClick: (rowKey: string, colKey: string, evt: MouseEvent) => void;
+	cellDblClick: (rowKey: string, colKey: string, evt: MouseEvent) => void;
 
 	constructor() {
 		this.rows = new Map();
-		this.cellClick = (rowKey, colKey, evt) => { };
-		this.cellDblClick = (rowKey, colKey, evt) => { };
+		this.cellClick = () => { };
+		this.cellDblClick = () => { };
 	}
 
 	addRow(key, columns) {
@@ -996,7 +982,7 @@ export class SplitBarHandler {
 
 	static #dummyElem = document.createElement("span");
 	static #dragOverlay = (() => {
-		let overlay = document.createElement("div");
+		const overlay = document.createElement("div");
 		overlay.className = "work-view-splitdrag-overlay";
 		return overlay;
 	})();
@@ -1024,8 +1010,8 @@ export class SplitBarHandler {
 
 	clickPoint;
 
-	barrierActionBefore = (handler, value) => { return false; };
-	barrierActionAfter = (handler, value) => { return false; };
+	barrierActionBefore: (handler: SplitBarHandler, value: number) => boolean = () => { return false; };
+	barrierActionAfter: (handler: SplitBarHandler, value: number) => boolean = () => { return false; };
 
 	constructor(splitter) {
 		this.splitter = splitter;
@@ -1042,13 +1028,13 @@ export class SplitBarHandler {
 		this.hasPercentValues = (this.beforeSik.pctWidth || this.beforeSik.pctHeight || this.afterSik.pctWidth || this.afterSik.pctHeight);
 
 		if (this.hasPercentValues) {
-			this.resizeListener = (evt) => {
+			this.resizeListener = () => {
 				this.#adjustPercentValues();
 			};
 			window.addEventListener("resize", this.resizeListener);
 		}
 
-		this.splitter.onmousedown = (evt) => {
+		this.splitter.onmousedown = (evt: MouseEvent) => {
 			this.#onDragStart(evt);
 		}
 		return this;
@@ -1147,23 +1133,23 @@ export class SplitBarHandler {
 
 	#doDrag(evt) {
 		this.isChanged = true;
-		let delta = {
+		const delta = {
 			x: evt.clientX - this.clickPoint.evt.clientX,
 			y: evt.clientY - this.clickPoint.evt.clientY
 		};
 
 		if (this.orientation === "v") {
-			this.#doVDrag(delta, evt);
+			this.#doVDrag(delta);
 		} else if (this.orientation === "h") {
-			this.#doHDrag(delta, evt);
+			this.#doHDrag(delta);
 		}
 	}
 
-	#doVDrag(delta, evt) {
+	#doVDrag(delta) {
 		delta.x = Math.min(Math.max(delta.x, -this.clickPoint.beforeWidth),
 			this.clickPoint.afterWidth);
 
-		let val = this.clickPoint.offsetLeft + delta.x;
+		const val = this.clickPoint.offsetLeft + delta.x;
 		if (this.barrierActionBefore(this, val)) { return; }
 
 		if (this.moveSplitter) {
@@ -1173,11 +1159,11 @@ export class SplitBarHandler {
 		this.compAfter.style.width = (this.clickPoint.afterWidth - delta.x) + "px";
 	}
 
-	#doHDrag(delta, evt) {
+	#doHDrag(delta) {
 		delta.y = Math.min(Math.max(delta.y, -this.clickPoint.beforeHeight),
 			this.clickPoint.afterHeight);
 
-		let val = this.clickPoint.offsetTop + delta.y;
+		const val = this.clickPoint.offsetTop + delta.y;
 		if (this.barrierActionBefore(this, val)) { return; }
 
 		if (this.moveSplitter) {
@@ -1202,7 +1188,7 @@ export class DialogDragHandler {
 	#start = { x: 0, y: 0 };
 	#startPos = { left: 0, top: 0 };
 
-	#triggerFilter = (evt: PointerEvent) => { return false };
+	#triggerFilter: (evt: PointerEvent) => boolean = () => false;
 	enabled = false;
 
 	constructor(dialog, handleElem) {
@@ -1247,8 +1233,8 @@ export class DialogDragHandler {
 		topVal = typeUtil.isString(topVal) ? Number.parseInt(topVal, 10) : topVal;
 
 		//center by default
-		let left = leftVal == 0 ? Math.max(0, (window.innerWidth - this.#dlg.offsetWidth) / 2) : leftVal;
-		let top = topVal == 0 ? Math.max(0, (window.innerHeight - this.#dlg.offsetHeight) / 2) : topVal;
+		const left = leftVal == 0 ? Math.max(0, (window.innerWidth - this.#dlg.offsetWidth) / 2) : leftVal;
+		const top = topVal == 0 ? Math.max(0, (window.innerHeight - this.#dlg.offsetHeight) / 2) : topVal;
 
 		this.#dlg.style.left = Math.round(left) + 'px';
 		this.#dlg.style.top = Math.round(top) + 'px';
@@ -1294,9 +1280,9 @@ export class DialogDragHandler {
 		this.#dlg.style.top = Math.round(newTop) + 'px';
 	};
 
-	#onWindowResize = (evt) => {
-		let left = Number.parseFloat(this.#dlg.style.left) || 0;
-		let top = Number.parseFloat(this.#dlg.style.top) || 0;
+	#onWindowResize = () => {
+		const left = Number.parseFloat(this.#dlg.style.left) || 0;
+		const top = Number.parseFloat(this.#dlg.style.top) || 0;
 		const maxLeft = Math.max(0, window.innerWidth - this.#dlg.offsetWidth);
 		const maxTop = Math.max(0, window.innerHeight - this.#dlg.offsetHeight);
 		if (left > maxLeft) this.#dlg.style.left = Math.round(maxLeft) + 'px';
@@ -1382,49 +1368,49 @@ export class DialogResizeHandler {
  */
 export class AttachmentHandler {
 
-	attachments = new Map();
-	listElem;
+	attachments = new Map<string, DataFile>();
+	listElem: HTMLElement;
 
-	constructor(listElem) {
+	constructor(listElem: HTMLElement) {
 		this.listElem = listElem;
 	}
 
-	addData(dataFile) {
+	addData(dataFile: DataFile): void {
 		if (dataFile && !this.attachments.has(dataFile.name)) {
 			this.attachments.set(dataFile.name, dataFile);
 			this.addDataToList(dataFile);
 		}
 	}
 
-	addDataToList(dataFile) {
-		let item = document.createElement("li");
+	addDataToList(dataFile: DataFile): void {
+		const item = document.createElement("li");
 		item.classList.add("indexed");
-		let html = `<span class='${Icons.xRemove("class")} wkv-listitem-ctrl' title='Remove Attachment' style='margin-right: 20px;'></span> <span>${dataFile.name}</span>`;
+		const html = `<span class='${Icons.xRemove("class")} wkv-listitem-ctrl' title='Remove Attachment' style='margin-right: 20px;'></span> <span>${dataFile.name}</span>`;
 		item.innerHTML = html;
 
 		this.listElem.appendChild(item);
 
 		onClicked(item.firstElementChild, (evt) => {
-			let name = evt.target.parentElement.lastElementChild.textContent;
+			const name = evt.target.parentElement.lastElementChild.textContent;
 			this.removeDataFromList(name, item);
 		});
 	}
 
-	removeDataFromList(name, item) {
+	removeDataFromList(name: string, item: HTMLElement): void {
 		item.remove();
 		this.attachments.delete(name);
 	}
 
-	removeAllData() {
+	removeAllData(): void {
 		this.attachments = new Map();
 		this.listElem.innerHTML = "";
 	}
 
-	hasData() {
+	hasData(): boolean {
 		return this.attachments.size > 0;
 	}
 
-	getData() {
+	getData(): Map<string, DataFile> {
 		return this.attachments;
 	}
 

@@ -2,12 +2,29 @@
 
 import { Logger } from 'core/logging.mjs';
 import { WorkView } from 'core/view-classes.mjs';
-import { UIBuilder, onClicked, onInput } from 'core/uibuilder.mjs';
+import { DataList, UIBuilder, onClicked, onInput } from 'core/uibuilder.mjs';
 import { WorkViewHtml } from 'core/view-templates.mjs';
 import * as Webapi from 'app/core/webapi.mjs';
 import * as Icons from 'core/icons.mjs';
 
 import { WorkbenchInterface as WbApp } from 'app/workbench.mjs';
+
+/* Types */
+import type { JSObject } from 'types/commons';
+
+export type DbConnectionDef = {
+	name: string,
+	type: string,
+	url: string,
+	user: string,
+	owner: string
+}
+
+type DbConnectionResponse = {
+	connections: Array<DbConnectionDef>,
+	status: string,
+	error: string
+}
 
 /**
  * A Database connection WorkView created in javascript using a builder.
@@ -16,14 +33,15 @@ class DbConnectionsView extends WorkView {
 
 	builder: UIBuilder;
 	//ui element collections
-	elem: { [key: string]: any; } = {};
+	elem: JSObject = {};
 
 	//the connection data objects
-	connections;
-	currentCon;
+	connections: { [key: string]: DbConnectionDef };
+	currentCon: DbConnectionDef;
+
 	//object that encapsulates the connection ui datalist
 	//and the connections data for adding/removing items at once
-	conList;
+	conList: DataList;
 
 	constructor(id: string) {
 		super(id, null);
@@ -54,19 +72,19 @@ class DbConnectionsView extends WorkView {
 				props.get("textField").styleProps = { "width": "150px" };
 			});
 		//local shortcut to avoid this.
-		let builder = this.builder;
+		const builder = this.builder;
 
 		//get a ui comp object for the workarea for styling
 		//and adding a title
-		let compSet = builder.newUICompFor(this.viewWorkarea)
+		const compSet = builder.newUICompFor(this.viewWorkarea)
 			.style({ "gap": "10px" })
 			.add("h2", (title) => {
 				title.style({ "font-weight": "normal", "user-select": "none" })
 					.html("Define and edit database connection properties")
 			}).getDomElem();
 
-		this.createSelectionPanel(builder, compSet, null);
-		this.createPropertiesPanel(builder, compSet, null);
+		this.createSelectionPanel(builder, compSet);
+		this.createPropertiesPanel(builder, compSet);
 
 		this.createSidePanel(builder);
 
@@ -77,7 +95,7 @@ class DbConnectionsView extends WorkView {
 
 	/**
 	 */
-	createSelectionPanel(builder, target, comps) {
+	createSelectionPanel(builder, target) {
 		builder.newUIComp()
 			.style({ "margin-bottom": "10px" })
 			.addLabelTextField(
@@ -106,8 +124,8 @@ class DbConnectionsView extends WorkView {
 
 	/**
 	 */
-	createPropertiesPanel(builder, target, comps) {
-		let hgap = "20px";
+	createPropertiesPanel(builder, target) {
+		const hgap = "20px";
 		let propertiesCompSet;
 
 		builder.newUIComp()
@@ -163,10 +181,10 @@ class DbConnectionsView extends WorkView {
 		//creating a side panel content
 		//using mainly plain html
 
-		let makeLI = (iconClass, text) => {
+		const makeLI = (iconClass, text) => {
 			return `<li style='margin-block-end: 5px;'><span class="${iconClass}"></span> ${text}</li>`
 		};
-		let sidePanelComp = builder.newUIComp("blankComp")
+		const sidePanelComp = builder.newUIComp("blankComp")
 			.style({ "padding": "20px" })
 			.addFromHtml(
 				`<span style="display: flex; align-items: center;">
@@ -195,10 +213,10 @@ class DbConnectionsView extends WorkView {
 			cb(this.connections);
 		} else {
 			//load the data from server
-			Webapi.doPOST(Webapi.service_get_dbconnections).then((response) => {
+			Webapi.doPOST<DbConnectionResponse>(Webapi.service_get_dbconnections).then((response: DbConnectionResponse) => {
 				//connections are sent as an array - create an object from it
 				this.connections = {};
-				response.connections.forEach((item) => this.connections[item.name] = item);
+				response.connections.forEach((item: DbConnectionDef) => this.connections[item.name] = item);
 				cb(this.connections);
 			});
 		}
@@ -206,20 +224,20 @@ class DbConnectionsView extends WorkView {
 
 	extendViewMenu() {
 		this.viewHeader.menu((menu) => {
-			menu.addItem("Clear View", (evt) => {
+			menu.addItem("Clear View", () => {
 				this.clearViewData();
 			}, { separator: "top" });
 		});
 	}
 
-	switchCurrentConnection(key) {
+	switchCurrentConnection(key: string) {
 		if (this.connections[key]) {
 			this.currentCon = this.connections[key];
 			this.writeDataToView();
 		} else if (!this.currentCon) {
-			this.currentCon = { name: key };
+			this.currentCon = null;
 		} else if (this.connections[this.currentCon.name]) {
-			let newCon = { ...this.currentCon };
+			const newCon = { ...this.currentCon };
 			newCon.name = key;
 			this.currentCon = newCon;
 		} else {
@@ -234,7 +252,7 @@ class DbConnectionsView extends WorkView {
 			}
 		});
 
-		let key = this.elem.tfConnectionName.value.trim();
+		const key = this.elem.tfConnectionName.value.trim();
 		if (key !== "" && this.connections[key]) {
 			this.currentCon = this.connections[key];
 		} else {
@@ -245,7 +263,7 @@ class DbConnectionsView extends WorkView {
 	}
 
 	writeDataToView() {
-		let excludes = [this.elem.tfConnectionName];
+		const excludes = [this.elem.tfConnectionName];
 
 		if (this.currentCon) {
 			this.builder.forEachBinding((name, ctrl) => {
@@ -269,8 +287,8 @@ class DbConnectionsView extends WorkView {
 	saveConnection() {
 		if (this.currentCon) {
 			this.readDataFromView();
-			let request = JSON.stringify({ connections: [this.currentCon] });
-			Webapi.doPOST(Webapi.service_save_dbconnections, request).then((response) => {
+			const request = JSON.stringify({ connections: [this.currentCon] });
+			Webapi.doPOST<DbConnectionResponse>(Webapi.service_save_dbconnections, request).then((response: DbConnectionResponse) => {
 				if (response.status === "ok") {
 					if (!this.connections[this.currentCon.name]) {
 						this.conList.addDataItem(this.currentCon.name, this.currentCon);
@@ -287,8 +305,8 @@ class DbConnectionsView extends WorkView {
 				message: `<b>Delete item</b><br>Do you want to delete connection <b>[${this.currentCon.name}]</b> ?`
 			}, (val) => {
 				if (val) {
-					let request = JSON.stringify({ connections: [this.currentCon] });
-					Webapi.doPOST(Webapi.service_delete_dbconnections, request).then((response) => {
+					const request = JSON.stringify({ connections: [this.currentCon] });
+					Webapi.doPOST<DbConnectionResponse>(Webapi.service_delete_dbconnections, request).then((response: DbConnectionResponse) => {
 						if (response.status === "ok") {
 							this.conList.removeDataItem(this.currentCon.name);
 							this.clearViewData();
@@ -301,8 +319,8 @@ class DbConnectionsView extends WorkView {
 	}
 
 	runTestDbConnection() {
-		let userId = this.elem.tfUser.value.trim();
-		let pwd = this.elem.tfPwd.value.trim();
+		const userId = this.elem.tfUser.value.trim();
+		const pwd = this.elem.tfPwd.value.trim();
 		if (userId) {
 			if (userId == pwd) {
 				this.showConnectionTestResult(true);
@@ -314,9 +332,9 @@ class DbConnectionsView extends WorkView {
 		}
 	}
 
-	showConnectionTestResult(status: any = -1, text = "") {
-		let ctrl = this.elem.tfTestResult;
-		let okProps = { color: "green", resize: "none", width: "80px", height: ctrl.style["min-height"] };
+	showConnectionTestResult(status: unknown = -1, text = "") {
+		const ctrl = this.elem.tfTestResult;
+		const okProps = { color: "green", resize: "none", width: "80px", height: ctrl.style["min-height"] };
 
 		if (status === false) { // NOSONAR
 			ctrl.value = "FAILURE - " + text + "\n\n" + new Error("Connection test failed").stack;

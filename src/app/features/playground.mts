@@ -10,12 +10,16 @@ import * as Icons from 'core/icons.mjs';
 
 import { WorkbenchInterface as WbApp } from 'app/workbench.mjs';
 import { WbProperties } from 'config/wbapp-properties.mjs';
+import { DataFile } from 'app/core/data-classes.mjs';
+
+/* Types */
+import type { JSObject } from 'types/commons';
 
 function playgroundUrl(dest) {
 	return BackendServerUrl(`/vres/playground/${dest}`);
 }
 
-let CodeEditor = {
+const CodeEditor = {
 	instance: null,
 
 	defaultLanguage: "javascript",
@@ -49,12 +53,12 @@ class PlaygroundView extends WorkView {
 	lastRequest;
 
 	//member objects to collect ui elements and ui objects from the builder
-	elem: { [key: string]: any; } = {};
-	uiobj: { [key: string]: any; } = {};
+	elem: JSObject = {};
+	uiobj: JSObject = {};
 
 	//side panel 
-	spMainPanel;
-	spDataPanel;
+	spMainPanel: HTMLElement;
+	spDataPanel: HTMLElement;
 
 	styles;
 
@@ -74,8 +78,8 @@ class PlaygroundView extends WorkView {
 		PlainJSContext.refId = this.refId;
 
 		this.viewHeader.menu((menu) => {
-			menu.addItem("Open as Standalone window", (evt) => {
-				let url = OriginServerUrl(`/workbench.html?config=playground`);
+			menu.addItem("Open as Standalone window", () => {
+				const url = OriginServerUrl(`/workbench.html?config=playground`);
 				window.open(url, "jamn-workbench", "resizable=yes");
 			}, { separator: "top" });
 		});
@@ -83,11 +87,11 @@ class PlaygroundView extends WorkView {
 		this.createUI();
 
 		this.attachmentHandler = new AttachmentHandler(this.elem.lstAttachments);
-		this.attachmentFileReader = new FileDataReader("text/*, .json, .txt", (dataFile) => {
+		this.attachmentFileReader = new FileDataReader("text/*, .json, .txt", (dataFile: DataFile) => {
 			this.attachmentHandler.addData(dataFile);
 		});
 
-		this.scriptFileReader = new FileDataReader(".js, .mjs", (dataFile) => {
+		this.scriptFileReader = new FileDataReader(".js, .mjs", (dataFile: DataFile) => {
 			this.setScript(dataFile);
 		});
 
@@ -100,7 +104,7 @@ class PlaygroundView extends WorkView {
 	}
 
 	setTitle(titleInfo) {
-		let title = `JavaScript Playground - [ ${titleInfo} ]`;
+		const title = `JavaScript Playground - [ ${titleInfo} ]`;
 		super.setTitle(title);
 	}
 
@@ -109,7 +113,7 @@ class PlaygroundView extends WorkView {
 	 */
 	createUI() {
 
-		let builder = new UIBuilder()
+		const builder = new UIBuilder()
 			//set the objects to hold all control dom elements with a varid
 			.setElementCollection(this.elem)
 			// and other things like e.g. datalists or "data-bind" infos
@@ -123,10 +127,10 @@ class PlaygroundView extends WorkView {
 			taFontSize: "12px"
 		};
 
-		let comps: any = {};
+		const comps: JSObject = {};
 		this.createWorkareaLayout(builder, comps);
 
-		this.createEditorComp(builder, comps.waMain, comps);
+		this.createEditorComp(builder, comps.waMain);
 		this.createEditor(this.elem.editorContainer);
 
 		this.createSidePanel(builder);
@@ -146,14 +150,14 @@ class PlaygroundView extends WorkView {
 
 	/**
 	 */
-	createEditorOptionsComp(builder, target, comps) {
+	createEditorOptionsComp(builder, target) {
 		builder.newUIComp()
 			.addLabel({ elemType: "labelText", text: "Options:" })
 			.addGroup({}, (group) => {
 				group.style({ "flex-direction": "row", "margin-bottom": "0px" })
 					.addRadioButton({ varid: "rbSnippetMode", name: "modeGroup", value: "snippetMode" }, (rb) => {
 						rb.style({ "margin-right": "10px" });
-						onChange(rb, (evt) => { this.onModeChange() });
+						onChange(rb, () => { this.onModeChange() });
 					})
 					.addLabel({ text: "Snippet mode", title: this.getText("snippetMode"), name: "lbSnippetMode" }, (lb) => {
 						lb.style({ "min-width": "fit-content", "padding-right": "15px", "border-right": "1px solid var(--border-gray)" })
@@ -161,7 +165,7 @@ class PlaygroundView extends WorkView {
 					})
 					.addRadioButton({ varid: "rbModuleMode", name: "modeGroup", value: "moduleMode" }, (rb) => {
 						rb.style({ "margin-right": "10px" });
-						onChange(rb, (evt) => { this.onModeChange() });
+						onChange(rb, () => { this.onModeChange() });
 					})
 					.addLabel({ text: "Module mode", title: this.getText("moduleMode"), name: "lbModuleMode" }, (lb) => {
 						lb.style({ "min-width": "fit-content" })
@@ -181,7 +185,7 @@ class PlaygroundView extends WorkView {
 
 	/**
 	 */
-	createEditorRunComp(builder, target, comps) {
+	createEditorRunComp(builder, target) {
 		builder.newUIComp()
 			.addLabelButton({ text: "Run:" },
 				{ varid: "pbRun", iconName: Icons.run(), text: "editor code", title: "Run script code" }, (label, pbRun) => {
@@ -205,10 +209,10 @@ class PlaygroundView extends WorkView {
 
 	/**
 	 */
-	createEditorComp(builder, target, comps) {
+	createEditorComp(builder, target) {
 
-		this.createEditorOptionsComp(builder, target, comps);
-		this.createEditorRunComp(builder, target, comps);
+		this.createEditorOptionsComp(builder, target);
+		this.createEditorRunComp(builder, target);
 
 		let splitterElem;
 
@@ -247,11 +251,12 @@ class PlaygroundView extends WorkView {
 	/**
 	 */
 	createEditor(editorContainer) {
-		let stopRunningMode = () => { this.setRunning(false); this.setDisabled(false); this.setTitle(""); };
+		const stopRunningMode = () => { this.setRunning(false); this.setDisabled(false); this.setTitle(""); };
 		this.setTitle("Loading external Editor ...");
 		this.setRunning(true);
 		this.setDisabled(true);
 
+		// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 		// @ts-ignore
 		const requireObj = window.require;
 
@@ -261,6 +266,7 @@ class PlaygroundView extends WorkView {
 		// load the editor module and create the instance
 		requireObj(['vs/editor/editor.main'], function () {
 			try {
+				// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 				// @ts-ignore
 				const monacoObj = window.monaco;
 
@@ -299,9 +305,9 @@ class PlaygroundView extends WorkView {
 		//show it opened
 		this.toggleSidePanel();
 
-		let comps: { [key: string]: any; } = {};
+		const comps: JSObject = {};
 		this.createSPanelMainLayout(builder, comps);
-		this.createSPanelHeadComp(builder, comps.sidePanelHead, comps);
+		this.createSPanelHeadComp(builder, comps.sidePanelHead);
 
 		this.createSPDataPanel(builder);
 
@@ -311,7 +317,7 @@ class PlaygroundView extends WorkView {
 	/**
 	 */
 	createSPanelMainLayout(builder, comps) {
-		let panelComp = builder.newUIComp("blankComp").class(["col-comp"]).attrib({ name: "sidePanelMain" });
+		const panelComp = builder.newUIComp("blankComp").class(["col-comp"]).attrib({ name: "sidePanelMain" });
 
 		this.spMainPanel = panelComp
 			.addRowContainer({ elemType: "div", name: "sidePanelHead" }, (head) => {
@@ -323,7 +329,7 @@ class PlaygroundView extends WorkView {
 
 	/**
 	 */
-	createSPanelHeadComp(builder, target, comps) {
+	createSPanelHeadComp(builder, target) {
 		builder.newUICompFor(target.domElem)
 			.addRowContainer({ varid: "spanelIconBar" }, (iconBar) => {
 				iconBar.style({ "margin-right": "10px", "align-items": "center" })
@@ -336,11 +342,11 @@ class PlaygroundView extends WorkView {
 	/**
 	 */
 	createSPDataPanel(builder) {
-		let comps: { [key: string]: any; } = {};
+		const comps: JSObject = {};
 		this.createSPDataPanelLayout(builder, comps)
-		this.createSPDataPanelArgsComp(builder, comps.dataPanelTop, comps);
-		this.createSPDataPanelAttachmentsComp(builder, comps.dataPanelTop, comps)
-		this.createSPDataPanelOutputComp(builder, comps.dataPanelBottom, comps);
+		this.createSPDataPanelArgsComp(builder, comps.dataPanelTop);
+		this.createSPDataPanelAttachmentsComp(builder, comps.dataPanelTop);
+		this.createSPDataPanelOutputComp(builder, comps.dataPanelBottom);
 
 		this.spMainPanel.append(this.spDataPanel);
 	}
@@ -350,7 +356,7 @@ class PlaygroundView extends WorkView {
 	createSPDataPanelLayout(builder, comps) {
 		let splitterElem;
 
-		let panelComp = builder.newUIComp("blankComp").class(["col-comp"]).attrib({ name: "spDataPanel" });
+		const panelComp = builder.newUIComp("blankComp").class(["col-comp"]).attrib({ name: "spDataPanel" });
 
 		this.spDataPanel = panelComp
 			.addColContainer({ elemType: "div", name: "dataPanelTop" }, (top) => {
@@ -376,7 +382,7 @@ class PlaygroundView extends WorkView {
 
 	/**
 	 */
-	createSPDataPanelArgsComp(builder, target, comps) {
+	createSPDataPanelArgsComp(builder, target) {
 		let argsLabel;
 		builder.newUIComp("colComp")
 			.addLabel({ text: "Args:", name: "lbArgs" }, (label) => { argsLabel = label })
@@ -392,7 +398,7 @@ class PlaygroundView extends WorkView {
 
 	/**
 	 */
-	createSPDataPanelAttachmentsComp(builder, target, comps) {
+	createSPDataPanelAttachmentsComp(builder, target) {
 		builder.newUIComp()
 			.style({ "align-items": "flex-start" })
 			.addLabel({ elemType: "labelText", text: "Attachments:", name: "lbAttachments" })
@@ -415,7 +421,7 @@ class PlaygroundView extends WorkView {
 
 	/**
 	 */
-	createSPDataPanelOutputComp(builder, target, comps) {
+	createSPDataPanelOutputComp(builder, target) {
 		let outputLabel;
 		builder.newUIComp()
 			.style({ "align-items": "flex-start" })
@@ -446,8 +452,8 @@ class PlaygroundView extends WorkView {
 
 	/** END UI *****************************************************************/
 
-	toggleCollapsed(evt = null) {
-		if (super.toggleCollapsed(evt)) {
+	toggleCollapsed() {
+		if (super.toggleCollapsed()) {
 			if (this.previewDialog.isOpen()) {
 				this.previewDialog.close();
 			}
@@ -552,7 +558,7 @@ class PlaygroundView extends WorkView {
 	/**
 	 */
 	executeSnippetMode() {
-		let executor = (context, scriptCode) => {
+		const executor = (context, scriptCode) => {
 			return new Function(`"use strict";\n${scriptCode}`).bind(context);
 		}
 		executor(PlainJSContext, this.getCurrentCode())(this.getCurrentArgs(), this.getCurrentAttachments());
@@ -562,8 +568,8 @@ class PlaygroundView extends WorkView {
 	 */
 	executeModuleMode() {
 		let request = null;
-		let runMethod = this.elem.tfRunMethod.value.trim();
-		let scriptSource = this.getCurrentCode();
+		const runMethod = this.elem.tfRunMethod.value.trim();
+		const scriptSource = this.getCurrentCode();
 
 		if (this.elem.cbKeep.checked && this.lastRequest) {
 			request = this.lastRequest;
@@ -573,7 +579,7 @@ class PlaygroundView extends WorkView {
 			this.lastRequest = request;
 		}
 
-		Webapi.doPOST(Webapi.service_upload_playground_content, request.toJson()).then((response) => {
+		Webapi.doPOST(Webapi.service_upload_playground_content, request.toJson()).then(() => {
 			import(playgroundUrl(`playground-run-code.mjs?id=${request.contentId}`))
 				.then((module) => {
 					if (runMethod && module[runMethod]) {
@@ -593,7 +599,7 @@ class PlaygroundView extends WorkView {
 	/**
 	 */
 	saveOutput() {
-		let fileName = "output_" + (this.scriptDataFile ? this.scriptDataFile.name : "playground") + ".txt";
+		const fileName = "output_" + (this.scriptDataFile ? this.scriptDataFile.name : "playground") + ".txt";
 		this.saveToFile(fileName, this.elem.taOutput.value.trim());
 	}
 
@@ -606,7 +612,7 @@ class PlaygroundView extends WorkView {
 	/**
 	 */
 	saveEditorCode() {
-		let type = this.hasSnippetMode() ? "js" : "mjs";
+		const type = this.hasSnippetMode() ? "js" : "mjs";
 		let fileName = `playground-script.${type}`;
 		if (this.scriptDataFile) {
 			fileName = this.scriptDataFile.name;
@@ -658,7 +664,7 @@ class PlaygroundView extends WorkView {
 	 */
 	clearOutput() {
 		if (!this.state.isRunning) {
-			let lastValue = this.elem.taOutput.value;
+			const lastValue = this.elem.taOutput.value;
 			this.elem.taOutput.value = "";
 			return lastValue;
 		}
@@ -753,7 +759,7 @@ class PreviewDialog extends ViewDialog {
 			.style({ display: "" })
 			.addActionIcon({ varid: "clearIcon", iconName: Icons.trash(), title: "Clear Preview" }, (icon) => {
 				icon.class(["dlg-header-action-icon"]);
-				onClicked(icon, (evt) => {
+				onClicked(icon, () => {
 					this.createPreviewComp();
 				});
 			})
@@ -767,7 +773,7 @@ class PreviewDialog extends ViewDialog {
 	}
 
 	createPreviewComp() {
-		let builder = new UIBuilder();
+		const builder = new UIBuilder();
 
 		if (previewComp && this.viewArea.domElem.contains(previewComp.domElem)) {
 			previewComp.domElem.remove();
@@ -784,7 +790,7 @@ class PreviewDialog extends ViewDialog {
 /**
  * a text collection 
  */
-let textCollection = {
+const textCollection = {
 	keep: `
 Keep for Debugging - if checked
 the local code file is preserved so it can be found in dev tools

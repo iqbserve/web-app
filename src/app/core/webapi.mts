@@ -5,6 +5,8 @@ import { BackendServerUrl } from 'core/tools.mjs';
 import { WbProperties } from 'config/wbapp-properties.mjs';
 import { WorkbenchInterface } from 'app/workbench.mjs';
 
+/* Types */
+
 /**
  * Customized webapi fetch options, extending standard fetch options
  */
@@ -52,7 +54,7 @@ async function getAuthorizationHeader(): Promise<Record<string, string>> {
  * Performs a GET request.
  * @template T The expected return type of the JSON response.
  */
-export async function doGET<T = any>(path: string, options: FetchOptions = {}): Promise<T | string> {
+export async function doGET<T = unknown>(path: string, options: FetchOptions = {}): Promise<T | string> {
     const url: string = BackendServerUrl(path);
     const parseJson = options.parseJson ? options.parseJson : false;
 
@@ -84,7 +86,7 @@ export async function doGET<T = any>(path: string, options: FetchOptions = {}): 
  * Performs a POST request.
  * @template T The expected return type of the JSON response.
  */
-export async function doPOST<T = any>(path: string, requestData: unknown = {}, options: FetchOptions = {}): Promise<T | string> {
+export async function doPOST<T = unknown>(path: string, requestData: unknown = {}, options: FetchOptions = {}): Promise<T | string> {
     const url: string = BackendServerUrl(path);
     const parseJson = options.parseJson ?? true;
 

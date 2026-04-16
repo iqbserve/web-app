@@ -4,20 +4,25 @@ import { Logger } from 'core/logging.mjs';
 import { WsoCommonMessage } from 'core/data-classes.mjs';
 import { WorkbenchInterface as WbApp } from 'app/workbench.mjs';
 
+/* Types */
+import type { PropertiesObject } from 'types/commons';
+
+export type WsoMessageListener = (wsoMsg: WsoCommonMessage) => void;
+
 /**
- * A simple WebSocket implementation for the workbench app.
+ * A simple WebSocket implementation.
  * 
  * The Data-IO uses WsoCommonMessage objects
  * that are serialized/deserialized to+from JSON.
  */
 export class WebSocketConnection {
 
-    #hostUrl: string;
+    #props: PropertiesObject;
     #socket: WebSocket;
-    #listener: any;
+    #listener: { [key: string]: WsoMessageListener[] };
 
-    constructor(hostUrl: string, options = {}) {
-        this.#hostUrl = hostUrl;
+    constructor(props: PropertiesObject) {
+        this.#props = props;
         this.#listener = { "any": [] };
     }
 
@@ -29,10 +34,10 @@ export class WebSocketConnection {
         if (this.isConnected()) {
             Logger.warn("Warning: WebSocket already connected");
         } else {
-            this.#socket = new WebSocket(this.#hostUrl);
+            this.#socket = new WebSocket(this.#props.hostUrl);
 
             // Event listener 
-            this.#socket.onopen = (event: Event) => {
+            this.#socket.onopen = () => {
                 Logger.info("WebSocket connection [opened]");
             };
 
@@ -40,12 +45,12 @@ export class WebSocketConnection {
                 this.#onMessage(event);
             };
 
-            this.#socket.onclose = (event: CloseEvent) => {
+            this.#socket.onclose = () => {
                 this.#socket = null;
                 Logger.info("WebSocket connection [closed]");
             };
 
-            this.#socket.onerror = (event: Event) => {
+            this.#socket.onerror = () => {
                 this.#socket = null;
                 Logger.error("WebSocket connection error");
                 this.#onMessage(event);
@@ -64,12 +69,12 @@ export class WebSocketConnection {
     /**
      * Expects WsoCommonMessage objects
      */
-    sendMessage(wsoMsg: WsoCommonMessage, sentCb: Function = null) {
+    sendMessage(wsoMsg: WsoCommonMessage, afterSentCb: () => void = null) {
         if (wsoMsg instanceof WsoCommonMessage) {
             if (this.isConnected()) {
-                let msg = this.#createWsoMessageString(wsoMsg);
+                const msg = this.#createWsoMessageString(wsoMsg);
                 this.#socket.send(msg);
-                if (sentCb) { sentCb(); }
+                if (afterSentCb) { afterSentCb(); }
                 return true;
             } else {
                 Logger.warn("WebSocket NOT connected");
@@ -82,7 +87,7 @@ export class WebSocketConnection {
         return false;
     }
 
-    addMessageListener(cb: (wsoMsg: WsoCommonMessage) => void, subject: string = "any") {
+    addMessageListener(cb: WsoMessageListener, subject: string = "any") {
         if (Object.hasOwn(this.#listener, subject)) {
             if (!this.#listener[subject].includes(cb)) {
                 this.#listener[subject].push(cb);
@@ -96,18 +101,17 @@ export class WebSocketConnection {
      * Expects WsoCommonMessage as JSON
      */
     #onMessage(event: MessageEvent | Event) {
-        let subject = "any";
-        let msg = "";
+        const subject = "any";
         let wsoMsg = new WsoCommonMessage("");
 
         if (event.type === "error") {
             wsoMsg.setStatusError("connection error");
         } else {
-            msg = JSON.parse((event as MessageEvent).data);
+            const msg = JSON.parse((event as MessageEvent).data);
             wsoMsg = Object.assign(wsoMsg, msg);
         }
 
-        this.#listener[subject].forEach((cb: (wsoMsg: WsoCommonMessage) => void) => cb(wsoMsg));
+        this.#listener[subject].forEach((cb: WsoMessageListener) => cb(wsoMsg));
     }
 
     #createWsoMessageString(wsoMsg: WsoCommonMessage) {

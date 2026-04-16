@@ -1,29 +1,28 @@
 /* Authored by iqbserve.de */
 
+/* Types */
+import type { JSObject } from "types/commons";
+
 /**
  * A simple properties class for global app values.
  * see also JPSWebAppConfigSupplier.java for backend support
  */
-
-type PropertiesEntryRecord = { [key: string]: string | boolean | number };
-type PropertiesDataRecord = { [key: string]: string | boolean | number | PropertiesEntryRecord };
-
 class Properties {
 
-    #entries: PropertiesDataRecord = {
+    #entries: JSObject = {
         showIntro: true,
         autoStartFeature: "",
         logLevel: 0,
         webServiceUrlRoot: "/webapi",
         webSocketUrlRoot: "/wsoapi",
         webBackendServerUrl: "",
-        webAuthenticationEnabled: false,
+        webAuthenticationEnabled: true,
 
-        systemInfo: {} as PropertiesEntryRecord,
+        systemInfo: {},
         vcUrls: {
             loader: "https://cdn.jsdelivr.net/npm/monaco-editor@0.55.1/min/vs/loader.js",
             config: "https://cdn.jsdelivr.net/npm/monaco-editor@0.55.1/min/vs"
-        } as PropertiesEntryRecord,
+        },
 
         authenticationConfig: {
             module: '/assets/js/keycloak.js',
@@ -33,11 +32,11 @@ class Properties {
             onLoad: 'check-sso', //'check-sso' 'login-required'
             checkLoginIframe: false, // Optional: Turn off iframe check if 3rd party cookie issues
             tokenRefreshInterval: 4 * 60 * 1000 // every 4 minutes
-        } as PropertiesEntryRecord
+        }
     };
 
     get(key: string, defaultVal = null) {
-        let value = this.#entries[key];
+        const value = this.#entries[key];
         if (value === true || value === false) { return value; }
         return this.#entries[key] || defaultVal;
     }
@@ -48,7 +47,7 @@ class Properties {
 
     applyGroup(name: string, values: object) {
         if (!this.#entries[name]) { this.#entries[name] = {} }
-        this.#entries[name] = { ...(this.#entries[name] as PropertiesEntryRecord), ...values };
+        this.#entries[name] = { ...this.#entries[name], ...values };
     }
 
     showIntro() {
@@ -75,7 +74,7 @@ class Properties {
         const pick = ["logLevel"];
         return Object.fromEntries(
             pick.map(key => [key, this.#entries[key]])
-        ) as PropertiesEntryRecord;
+        );
     }
 }
 

@@ -41,10 +41,10 @@ export class WsoCommonMessage {
 		this.error = errorInfo;
 	}
 
-	addAttachment(key: string, value: any) {
+	addAttachment(key: string, value: unknown) {
 		this.attachments[key] = value;
 	}
-};
+}
 
 /**
  * A common command definition.
@@ -61,7 +61,7 @@ export class CommandDef {
 		this.script = script;
 		this.options = { ...this.options, ...opt };
 	}
-};
+}
 
 /**
  * View definition struct.
@@ -69,7 +69,7 @@ export class CommandDef {
 export class ViewSource {
 	#file = "";
 	#html = null;
-	#htmlLoadListener = (viewSrc: ViewSource) => { };
+	#htmlLoadListener: (viewSrc: ViewSource) => void = () => { };
 
 	constructor(file: string) {
 		this.#file = file;
@@ -95,5 +95,18 @@ export class ViewSource {
 	getFile() {
 		return this.#file;
 	}
+}
 
-};
+/**
+ */
+export class DataFile {
+	name = "";
+	date = "";
+	data: string | null = null;
+
+	constructor(name: string, date: string, data: string | null = null) {
+		this.name = name;
+		this.date = date;
+		this.data = data;
+	}
+}

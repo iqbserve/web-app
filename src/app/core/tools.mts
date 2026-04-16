@@ -2,6 +2,7 @@
 
 import { Logger } from 'core/logging.mjs';
 import { WbProperties } from 'config/wbapp-properties.mjs';
+import { DataFile } from './data-classes.mjs';
 
 /**
  * Some helper functions and constants
@@ -19,23 +20,23 @@ export class LazyFunction {
 	#functionArgs = null;
 	#returnOnly = false;
 
-	constructor(module: string, fncName: string, fncArgs: any = null) {
+	constructor(module: string, fncName: string, fncArgs: unknown[] = null) {
 		this.#moduleName = module;
 		this.#functionName = fncName;
 		this.#functionArgs = fncArgs;
 	}
 
-	asFunction() {
+	setToFunctionReturnMode(): LazyFunction {
 		//do not call the function
 		//just return it
 		this.#returnOnly = true;
 		return this;
 	}
 
-	invoke(cb: (retVal: any) => void) {
+	invoke(cb: (retVal: unknown) => void): void {
 		import(this.#moduleName)
 			.then((module) => {
-				let retVal;
+				let retVal: unknown;
 				if (this.#returnOnly) {
 					retVal = module[this.#functionName]
 				} else if (this.#functionArgs) {
@@ -50,21 +51,9 @@ export class LazyFunction {
 
 /**
  */
-export function importJson(url: string, cb: (data: any) => void) {
-	import(url, {
-		with: { type: 'json' }
-	}).then((module) => {
-		cb(module.default);
-	}).catch((e) => {
-		Logger.error(e);
-	});
-}
-
-/**
- */
-export function isUrlAvailable(url: string, cb: (available: boolean) => void, timeout = 2000) {
-	let controller = new AbortController();
-	let id = setTimeout(() => controller.abort(), timeout);
+export function checkUrlAvailable(url: string, cb: (available: boolean) => void, timeout = 2000): void {
+	const controller = new AbortController();
+	const id = setTimeout(() => controller.abort(), timeout);
 	Logger.debug(`Looking for ... ${url}, ${id}`);
 
 	fetch(url, {
@@ -77,17 +66,17 @@ export function isUrlAvailable(url: string, cb: (available: boolean) => void, ti
 		cb(true);
 	}).catch((e) => {
 		clearTimeout(id);
-		Logger.debug(`isUrlAvailable FALSE: ${id}`);
+		Logger.debug(`isUrlAvailable FALSE: ${id} - ${e.message}`);
 		cb(false);
 	});
 }
 
 /**
  */
-export function BackendServerUrl(...path: string[]) {
+export function BackendServerUrl(...path: string[]): string {
 	let url = WbProperties.webBackendServerUrl(window.location.origin);
 
-	let urlPath = path.join("/");
+	const urlPath = path.join("/");
 	if (urlPath.startsWith("/")) {
 		url = url + urlPath;
 	} else {
@@ -98,10 +87,10 @@ export function BackendServerUrl(...path: string[]) {
 
 /**
  */
-export function OriginServerUrl(...path: string[]) {
+export function OriginServerUrl(...path: string[]): string {
 	let url = window.location.origin;
 
-	let urlPath = path.join("/");
+	const urlPath = path.join("/");
 	if (urlPath.startsWith("/")) {
 		url = url + urlPath;
 	} else {
@@ -112,32 +101,32 @@ export function OriginServerUrl(...path: string[]) {
 
 /**
  */
-export function decodeRequestParameter(href: string) {
+export function decodeRequestParameter(href: string): Map<string, string> {
 	const paramMap = new Map(new URL(href).searchParams.entries());
 	return paramMap;
 }
 
-export function styleFloat(elem: Element, prop: string) {
+export function styleFloat(elem: Element, prop: string): number {
 	return Number.parseFloat(window.getComputedStyle(elem)[prop]) || 0;
 }
 
 /**
  */
-export function findChildOf(root: Element, childId: string) {
+export function findChildOf(root: Element, childId: string): Element | null {
 	const selector = `#${CSS.escape(childId)}`;
 	return root.querySelector(selector);
 }
 
 /**
  */
-export function setVisibility(elem: HTMLElement, flag: boolean) {
+export function setVisibility(elem: HTMLElement, flag: boolean): HTMLElement {
 	elem.style["visibility"] = flag ? "visible" : "hidden";
 	return elem;
 }
 
 /**
  */
-export function setDisplay(elem: HTMLElement, flag: boolean | string) {
+export function setDisplay(elem: HTMLElement, flag: boolean | string): HTMLElement {
 	if (typeof flag == "boolean") {
 		elem.style["display"] = flag ? "block" : "none";
 	} else if (typeof flag == "string") {
@@ -148,13 +137,13 @@ export function setDisplay(elem: HTMLElement, flag: boolean | string) {
 
 /**
  */
-export function newSimpleId(prfx = "") {
+export function newSimpleId(prfx = ""): string {
 	return prfx + Math.random().toString(16).slice(2);
 }
 
 /**
  */
-export function mergeArrayInto(target: any[], source: any[], allowDuplicates = false) {
+export function mergeArrayInto<T>(target: T[], source: T[], allowDuplicates = false): T[] {
 	target = target || [];
 	source = source || [];
 	//copy target
@@ -167,10 +156,6 @@ export function mergeArrayInto(target: any[], source: any[], allowDuplicates = f
 	return target;
 }
 
-export function clearArray(array: any[]) {
-	if (array) { array.length = 0; }
-}
-
 /**
  */
 export const fileUtil = {
@@ -178,14 +163,14 @@ export const fileUtil = {
 	/**
 	 */
 	saveToFileFapi: (fileName: string, text: string) => {
-		(window as any).showSaveFilePicker({
+		window["showSaveFilePicker"]({
 			suggestedName: fileName,
 			types: [{
 				description: "Text file",
 				accept: { "text/plain": [".txt"] },
 			}],
 		}).then(async handler => {
-			let file = await handler.createWritable();
+			const file = await handler.createWritable();
 			await file.write(text);
 			await file.close();
 		}).catch(err => Logger.error(err));
@@ -194,10 +179,10 @@ export const fileUtil = {
 	/**
 	 */
 	saveToFileClassic: (fileName: string, text: string) => {
-		let blob = new Blob([text], { type: "text/plain" });
-		let url = URL.createObjectURL(blob);
+		const blob = new Blob([text], { type: "text/plain" });
+		const url = URL.createObjectURL(blob);
 
-		let a = document.createElement("a");
+		const a = document.createElement("a");
 		a.href = url;
 		a.download = fileName;
 		a.style.display = "none";
@@ -208,7 +193,7 @@ export const fileUtil = {
 	/**
 	 */
 	createFileInputElement: (fileTypes: string, cb: (evt: Event) => void) => {
-		let fileInput = document.createElement("input");
+		const fileInput = document.createElement("input");
 		fileInput.type = "file";
 		fileInput.style.display = "none";
 		fileInput.accept = fileTypes;
@@ -230,12 +215,12 @@ export const fileUtil = {
 export class FileDataReader {
 
 	#fileTypes: string;
-	#dataCb: (dataFile: any) => void;
+	#dataCb: (dataFile: DataFile) => void;
 	#fsapi = false;
 
 	#fileInput: HTMLInputElement;
 
-	constructor(fileTypes: string, dataCb: (dataFile: any) => void, fsapi = false) {
+	constructor(fileTypes: string, dataCb: (dataFile: DataFile) => void, fsapi = false) {
 		this.#fileTypes = fileTypes;
 		this.#dataCb = dataCb;
 		this.#fsapi = fsapi;
@@ -245,17 +230,17 @@ export class FileDataReader {
 			this.#fileInput.style.display = "none";
 			this.#fileInput.accept = this.#fileTypes;
 			this.#fileInput.addEventListener("change", (evt) => {
-				let input = evt.target as HTMLInputElement;
-				let file = input.files.length > 0 ? input.files[0] : null;
+				const input = evt.target as HTMLInputElement;
+				const file = input.files.length > 0 ? input.files[0] : null;
 				this.#getFileDataFrom(file);
 			});
 		}
 	}
 
 	#getFileDataFrom(file: File) {
-		let dataFile = null;
+		let dataFile: DataFile = null;
 		if (file) {
-			dataFile = { name: file.name, date: new Date(file.lastModified).toLocaleTimeString(), data: null };
+			dataFile = new DataFile(file.name, new Date(file.lastModified).toLocaleTimeString(), null);
 			file.text().then((textData) => {
 				dataFile.data = textData;
 				this.#fileInput.value = "";
@@ -277,46 +262,46 @@ export class FileDataReader {
  */
 export const typeUtil = {
 
-	isString: (val: any) => {
+	isString: (val: unknown): boolean => {
 		return (typeof val === 'string');
 	},
 
-	isObject: (val: any) => {
+	isObject: (val: unknown): boolean => {
 		return (val !== null && typeof val === 'object');
 	},
 
-	isDomElement: (val: any) => {
-		return (val !== null && (val instanceof Element || val.nodeType !== undefined));
+	isDomElement: (val: unknown): boolean => {
+		return (val !== null && (val instanceof Element));
 	},
 
-	isArray: (val: any) => {
+	isArray: (val: unknown): boolean => {
 		return Array.isArray(val);
 	},
 
-	isFunction: (val: any) => {
+	isFunction: (val: unknown): boolean => {
 		return (val !== null && (typeof val === 'function'));
 	},
 
-	isNumber: (val: any) => {
+	isNumber: (val: unknown): boolean => {
 		return (val !== null && typeof val === 'number');
 	},
 
-	isBoolean: (val: any) => {
+	isBoolean: (val: unknown): boolean => {
 		return (val === true || val === false);
 	},
 
-	isBooleanString: (val: any) => {
+	isBooleanString: (val: unknown): boolean => {
 		return (val === "true" || val === "false");
 	},
 
-	booleanFromString: (val: any) => {
+	booleanFromString: (val: unknown): boolean | null => {
 		if (typeUtil.isBooleanString(val)) {
 			return (val === "true");
 		}
 		return null;
 	},
 
-	stringFromBoolean: (val: any) => {
+	stringFromBoolean: (val: unknown): string | null => {
 		if (typeUtil.isBoolean(val)) {
 			return val ? "true" : "false";
 		}

@@ -3,6 +3,9 @@
 import { UIBuilder, onClicked, onKeyup } from 'core/uibuilder.mjs';
 import * as Icons from 'core/icons.mjs';
 
+/* Types */
+import type { ConfigObject, JSObject } from 'types/commons';
+
 /**
  * App titelbar component
  */
@@ -11,14 +14,14 @@ export class WbTitlebar extends HTMLElement {
 
     #stepViewsDown = () => { };
     #stepViewsUp = () => { };
-    elem: Record<string, HTMLElement> = {};
+    #elem: JSObject = {};
 
     constructor() {
         super();
     }
 
     #createUI(builder: UIBuilder) {
-        builder.setElementCollection(this.elem);
+        builder.setElementCollection(this.#elem);
 
         builder.newUICompFor(this)
             .style({ "user-select": "none" })
@@ -65,7 +68,7 @@ export class WbTitlebar extends HTMLElement {
     }
 
     setTitleText(text: string) {
-        this.elem.titleText.innerHTML = `[ ${text} ]`;
+        this.#elem.titleText.innerHTML = `[ ${text} ]`;
     }
 
 }
@@ -77,14 +80,14 @@ export class WbStatusline extends HTMLElement {
     static TagName = "wb-statusline";
 
     #scmUrl: string = "";
-    elem: Record<string, HTMLElement> = {};
+    #elem: JSObject = {};
 
     constructor() {
         super();
     }
 
     #createUI(builder: UIBuilder) {
-        builder.setElementCollection(this.elem);
+        builder.setElementCollection(this.#elem);
 
         builder.newUICompFor(this)
             .style({ "user-select": "none" })
@@ -114,7 +117,7 @@ export class WbStatusline extends HTMLElement {
     }
 
     setInfoText(text: string) {
-        this.elem.infoText.innerHTML = text;
+        this.#elem.infoText.innerHTML = text;
     }
 }
 
@@ -124,10 +127,11 @@ export class WbStatusline extends HTMLElement {
 export class WbSidebar extends HTMLElement {
     static TagName = "wb-sidebar";
 
-    #topicDefs: Array<Record<string, any>> = [];
-    #workItemDefs: Array<Record<string, any>> = [];
-    #itemAction = (featureName: string) => { };
-    #elem: Record<string, HTMLElement> = {};
+    #topicDefs: Array<ConfigObject> = [];
+    #workItemDefs: Array<ConfigObject> = [];
+    #itemAction: (featureName: string) => void = () => { };
+
+    #elem: JSObject = {};
 
     constructor() {
         super();
@@ -140,7 +144,7 @@ export class WbSidebar extends HTMLElement {
             .addContainer({ varid: "header", clazzes: "sidebar-header" }, (header) => {
                 header.addActionIcon({ varid: "menuIcon", iconName: Icons.menu() }, (menuIcon) => {
                     menuIcon.title("Show/Hide sidebar menu").class("sidebar-header-icon");
-                    onClicked(menuIcon, (evt) => {
+                    onClicked(menuIcon, () => {
                         this.toggleCollapse();
                     })
                 })
@@ -150,7 +154,7 @@ export class WbSidebar extends HTMLElement {
                 body.addContainer({ varid: "topicHead", clazzes: "sbar-topic-head" }, (topicHead) => {
                     topicHead.addActionIcon({ iconName: Icons.gi_toggleExpand() }, (icon) => {
                         icon.title("Expand/Collapse Topics").class("sidebar-header-icon").style({ "font-size": "14px", "margin-left": "10px" });
-                        onClicked(icon, (evt) => {
+                        onClicked(icon, () => {
                             this.#expandTopics(icon.domElem);
                         });
                     })
@@ -166,29 +170,29 @@ export class WbSidebar extends HTMLElement {
     }
 
     #newWorkIcon(id, iconName) {
-        let elem = UIBuilder.createDomElementFrom(`<a-icon iconname="${iconName}" id="${id}" class="sidebar-header-icon"></a-icon>`);
+        const elem = UIBuilder.createDomElementFrom(`<a-icon iconname="${iconName}" id="${id}" class="sidebar-header-icon"></a-icon>`);
         return elem;
     }
 
     #onItemClick(evt: Event) {
-        let target = evt.target as HTMLElement;
+        const target = evt.target as HTMLElement;
         this.#itemAction(target.dataset.feature);
     }
 
     #createTopicList() {
 
-        let topicListElem = this.#elem.topicList;
+        const topicListElem = this.#elem.topicList;
         let topicElem = null;
         let itemElem = null;
         let itemListElem = null;
 
-        this.#topicDefs.forEach(topicDef => {
+        this.#topicDefs.forEach((topicDef: ConfigObject) => {
             topicElem = this.#newTopic(topicDef.id, topicDef);
             itemListElem = this.#newTopicList();
             topicElem.append(itemListElem);
             topicListElem.append(topicElem);
 
-            topicDef.items?.forEach(itemDef => {
+            (topicDef.items as Array<ConfigObject>)?.forEach((itemDef: ConfigObject) => {
                 itemElem = this.#newTopicItem(itemDef.id, itemDef.text, itemDef.feature);
                 itemListElem.append(itemElem);
                 onClicked(itemElem, (evt) => {
@@ -200,21 +204,21 @@ export class WbSidebar extends HTMLElement {
 
     #newTopic(key, def) {
 
-        let iconClass = Icons.getIconClasses(def.icon, true);
-        let text = def.text;
-        let html = `
+        const iconClass = Icons.getIconClassString(def.icon);
+        const text = def.text;
+        const html = `
         <li class="sbar-topic" name="${text}">
             <span class="sbar-topic-header node-trigger">
                 <span class="sbar-topic-icon ${iconClass} node-trigger"></span>
                 <span class="sbar-topic-text node-trigger">${text}</span>
             </span>
         </li>`;
-        let elem = UIBuilder.createDomElementFrom(html);
+        const elem = UIBuilder.createDomElementFrom(html);
 
         onClicked(elem, (evt) => {
             //prevent collapsing topic
             if (evt.target.classList.contains("node-trigger")) {
-                let list = evt.currentTarget.lastChild;
+                const list = evt.currentTarget.lastChild;
                 if (list) {
                     if (list.style.display == "none" || list.style.display == "") {
                         list.style.display = "block";
@@ -229,15 +233,15 @@ export class WbSidebar extends HTMLElement {
     }
 
     #newTopicList() {
-        let html = `<ul class="sbar-item-list"></ul>`;
-        let list = UIBuilder.createDomElementFrom(html);
+        const html = `<ul class="sbar-item-list"></ul>`;
+        const list = UIBuilder.createDomElementFrom(html);
         return list;
     }
 
     #newTopicItem(id, text, feature) {
         id = id ? "id=" + id : "";
         feature = feature ? `data-feature="${feature}"` : "";
-        let html = `<li class="sbar-item" ${id} ${feature}>${text}</li>`;
+        const html = `<li class="sbar-item" ${id} ${feature}>${text}</li>`;
         return UIBuilder.createDomElementFrom(html);
     }
 
@@ -250,17 +254,16 @@ export class WbSidebar extends HTMLElement {
             }
         });
 
-        let topics = this.querySelectorAll<HTMLElement>("ul.sbar-item-list")
+        const topics = this.querySelectorAll<HTMLElement>("ul.sbar-item-list")
         for (const list of topics) {
             list.style.display = displayVal;
         }
     }
 
     #filterItems(text = "") {
-        let filter = text.trim().toLowerCase();
-        let itemText = "";
-        let items = this.querySelectorAll<HTMLElement>("li.sbar-item")
-        let hasFilter = filter.length > 0;
+        const filter = text.trim().toLowerCase();
+        const items = this.querySelectorAll<HTMLElement>("li.sbar-item")
+        const hasFilter = filter.length > 0;
 
         if (hasFilter) {
             this.#elem.topicHead.classList.add("topic-head-freez");
@@ -268,8 +271,8 @@ export class WbSidebar extends HTMLElement {
             this.#elem.topicHead.classList.remove("topic-head-freez");
         }
 
-        let showItem = (flag, item) => {
-            let topic = item.parentElement.parentElement;
+        const showItem = (flag, item) => {
+            const topic = item.parentElement.parentElement;
 
             item.style.display = flag ? "" : "none";
             if (flag) {
@@ -283,6 +286,7 @@ export class WbSidebar extends HTMLElement {
             }
         };
 
+        let itemText: string;
         for (const item of items) {
             if (hasFilter) {
                 itemText = item.innerText.trim().toLowerCase();
@@ -306,12 +310,12 @@ export class WbSidebar extends HTMLElement {
         return this;
     }
 
-    setTopicDefs(topicDefs: Array<object>) {
+    setTopicDefs(topicDefs: Array<ConfigObject>) {
         this.#topicDefs = topicDefs;
         return this;
     }
 
-    setWorkItemDefs(workItemDefs: Array<object>) {
+    setWorkItemDefs(workItemDefs: Array<ConfigObject>) {
         this.#workItemDefs = workItemDefs;
         return this;
     }
@@ -346,7 +350,7 @@ export class WbSidebar extends HTMLElement {
      */
     addHeaderWorkIcon(def) {
         let icon = null;
-        let workIconBar = this.#elem.workIconBar;
+        const workIconBar = this.#elem.workIconBar;
         if (def.icon) {
             icon = this.#newWorkIcon(def.id, def.icon);
             icon.title = def.text ? def.text : "";
@@ -385,11 +389,11 @@ export class ActionIcon extends HTMLElement {
         super();
     }
 
-    #getIconClasses() {
+    #getIconClasses(): string[] {
         return Icons.getIconClasses(this.iconname);
     }
 
-    #getShapeClass(idx = 0) {
+    #getShapeClass(idx = 0): string {
         return Icons.getIconShapeClasses(this.iconname)[idx];
     }
 
@@ -402,26 +406,11 @@ export class ActionIcon extends HTMLElement {
         }
     }
 
-    hasInitialShape() {
+    hasInitialShape(): boolean {
         return this.classList.contains(this.#getShapeClass(0));
     }
 
-    switch(opt: Record<string, boolean | Function> = {}) {
-        opt = { flag: this.hasInitialShape(), cb: null, ...opt };
-
-        if (opt.flag) {
-            this.classList.remove(this.#getShapeClass(0));
-            this.classList.add(this.#getShapeClass(1));
-        } else {
-            this.classList.add(this.#getShapeClass(0));
-            this.classList.remove(this.#getShapeClass(1));
-        }
-        if (opt.cb) {
-            (opt.cb as Function)(this, opt.flag);
-        }
-    }
-
-    setEnabled(flag) {
+    setEnabled(flag: boolean) {
         if (flag) {
             this.style["pointer-events"] = "all";
         } else {
@@ -429,6 +418,20 @@ export class ActionIcon extends HTMLElement {
         }
     }
 
+    switch(options?: { flag?: boolean, cb?: (icon: ActionIcon, flag: boolean) => void }): void {
+        const opts = { flag: this.hasInitialShape(), cb: null, ...options };
+
+        if (opts.flag) {
+            this.classList.remove(this.#getShapeClass(0));
+            this.classList.add(this.#getShapeClass(1));
+        } else {
+            this.classList.add(this.#getShapeClass(0));
+            this.classList.remove(this.#getShapeClass(1));
+        }
+        if (opts.cb) {
+            opts.cb(this, opts.flag);
+        }
+    }
 }
 
 

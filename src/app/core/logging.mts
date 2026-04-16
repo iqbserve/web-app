@@ -12,19 +12,19 @@ class LoggingProvider {
 	constructor(properties: { [key: string]: string | number | boolean }) {
 		this.level = (properties?.logLevel || ALL) as number;
 	}
-	consoleLog(msg: any) {
+	consoleLog(msg: unknown) {
 		console.log(msg);
 	}
-	info(msg: any) {
+	info(msg: unknown) {
 		console.log(msg);
 	}
-	warn(msg: any) {
+	warn(msg: unknown) {
 		console.warn(msg);
 	}
-	debug(msg: any) {
+	debug(msg: unknown) {
 		console.debug(msg);
 	}
-	error(msg: any) {
+	error(msg: unknown) {
 		console.error(msg);
 	}
 }

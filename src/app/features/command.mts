@@ -1,13 +1,16 @@
 /* Authored by iqbserve.de */
 
 import { NL, newSimpleId, asDurationString, FileDataReader, LazyFunction } from 'core/tools.mjs';
-import { WsoCommonMessage, CommandDef } from 'core/data-classes.mjs';
+import { WsoCommonMessage, CommandDef, DataFile } from 'core/data-classes.mjs';
 import { WorkView, AttachmentHandler } from 'core/view-classes.mjs';
 import { UIBuilder, onClicked, onInput, onKeydown, KEY } from 'core/uibuilder.mjs';
 import { WorkViewHtml } from 'core/view-templates.mjs';
 import * as Icons from 'core/icons.mjs';
 
 import { WorkbenchInterface as WbApp } from 'app/workbench.mjs';
+
+/* Types */
+import type { JSObject } from 'types/commons';
 
 /**
  * A general View class for server side commands.
@@ -40,8 +43,8 @@ export class CommandView extends WorkView {
 	attachmentHandler: AttachmentHandler;
 
 	//ui element collections
-	elem: { [key: string]: any; } = {};
-	uiobj: { [key: string]: any; } = {};
+	elem: JSObject = {};
+	uiobj: JSObject = {};
 
 	outputProps = { initWidth: "1000px", initHeight: "300px", hstep: 50, steps: 0 };
 
@@ -63,10 +66,10 @@ export class CommandView extends WorkView {
 		this.namedArgs = { help: "-h", testfile: "-file=test-data.json", cdata: '<![CDATA[ {"name":"HelloFunction", "args":["John Doe"]} ]]>' };
 
 		this.viewHeader.menu((menu) => {
-			menu.addItem("Clear Output", (evt) => {
+			menu.addItem("Clear Output", () => {
 				this.clearOutput(true);
 			}, { separator: "top" })
-				.addItem("Clear View", (evt) => {
+				.addItem("Clear View", () => {
 					this.clearAll();
 				});
 		});
@@ -74,7 +77,7 @@ export class CommandView extends WorkView {
 		this.createUI();
 
 		this.attachmentHandler = new AttachmentHandler(this.elem.lstAttachments);
-		this.attachmentFileReader = new FileDataReader("text/*, .json, .txt", (dataFile) => {
+		this.attachmentFileReader = new FileDataReader("text/*, .json, .txt", (dataFile: DataFile) => {
 			this.attachmentHandler.addData(dataFile);
 		});
 
@@ -92,7 +95,7 @@ export class CommandView extends WorkView {
 	/**
 	 */
 	createUI() {
-		let builder = new UIBuilder()
+		const builder = new UIBuilder()
 			//set the objects to hold all control dom elements with a varid
 			.setElementCollection(this.elem)
 			// and other things like e.g. datalists or "data-bind" infos
@@ -118,21 +121,21 @@ export class CommandView extends WorkView {
 				})
 			.appendTo(compSet);
 
-		this.createArgsSection(builder, compSet, null);
-		this.createAttachmentsSection(builder, compSet, null);
+		this.createArgsSection(builder, compSet);
+		this.createAttachmentsSection(builder, compSet);
 
 		//a separator
 		builder.newUIComp().addSeparator((elem) => { elem.style({ width: "100%" }) }).appendTo(compSet);
 
-		this.createOutputSection(builder, compSet, null);
+		this.createOutputSection(builder, compSet);
 	}
 
 	/**
 	 */
-	createArgsSection(builder, target, comps) {
-		let namedArgsList = Object.getOwnPropertyNames(this.namedArgs);
-		let taTitle = (this.commandDef.options.args ? "Command arguments: -h for help" : "<no args>") + "\nStructured text like e.g. JSON must be wrapped in a <![CDATA[ structured text ]]> tag.";
-		let taPlaceholder = this.commandDef.options.args ? " -h + Enter for help" : "<no args>";
+	createArgsSection(builder, target) {
+		const namedArgsList = Object.getOwnPropertyNames(this.namedArgs);
+		const taTitle = (this.commandDef.options.args ? "Command arguments: -h for help" : "<no args>") + "\nStructured text like e.g. JSON must be wrapped in a <![CDATA[ structured text ]]> tag.";
+		const taPlaceholder = this.commandDef.options.args ? " -h + Enter for help" : "<no args>";
 		builder.newUIComp()
 			.style({ "align-items": "flex-start" })
 			.addLabelTextArea({ text: "Args:" }, { varid: "taArgs" }, (label, textarea) => {
@@ -168,7 +171,7 @@ export class CommandView extends WorkView {
 			.appendTo(target);
 
 		onInput(this.elem.tfNamedArgs, (evt) => {
-			let key = evt.currentTarget.value;
+			const key = evt.currentTarget.value;
 			this.setArgsSelection(key);
 		});
 		onClicked(this.elem.icoClearArgChoice, () => { this.clearArgChoice(); });
@@ -178,7 +181,7 @@ export class CommandView extends WorkView {
 
 	/**
 	 */
-	createAttachmentsSection(builder, target, comps) {
+	createAttachmentsSection(builder, target) {
 		builder.newUIComp()
 			.style({ "align-items": "flex-start" })
 			.addLabel({ text: "Attachments:", elemType: "label-text" })
@@ -200,7 +203,7 @@ export class CommandView extends WorkView {
 
 	/**
 	 */
-	createOutputSection(builder, target, comps) {
+	createOutputSection(builder, target) {
 		let lbOutput;
 
 		builder.newUIComp()
@@ -290,10 +293,10 @@ export class CommandView extends WorkView {
 	/**
 	 */
 	clearOutput(ask = false) {
-		let taOutput = this.elem.taOutput as HTMLTextAreaElement;
+		const taOutput = this.elem.taOutput as HTMLTextAreaElement;
 		if (!this.state.isRunning && taOutput.value.toString().trim()) {
-			let clear = () => {
-				let lastValue = taOutput.value;
+			const clear = () => {
+				const lastValue = taOutput.value;
 				taOutput.value = "";
 				return lastValue;
 			};
@@ -349,7 +352,7 @@ export class CommandView extends WorkView {
 	/**
 	 */
 	runCommand() {
-		let wsoMsg = new WsoCommonMessage(this.wsoRefId);
+		const wsoMsg = new WsoCommonMessage(this.wsoRefId);
 		wsoMsg.command = this.commandDef.command;
 		wsoMsg.functionModule = this.commandDef.script;
 		wsoMsg.argsSrc = this.elem.taArgs.value.trim();
@@ -390,10 +393,10 @@ export class CommandView extends WorkView {
 	/**
 	 */
 	saveArgChoice() {
-		let key = this.elem.tfNamedArgs.value.trim();
+		const key = this.elem.tfNamedArgs.value.trim();
 		if (key != "") {
 			this.namedArgs[key] = this.elem.taArgs.value.trim();
-			let datalist = this.getDataListObjFor("tfNamedArgs");
+			const datalist = this.getDataListObjFor("tfNamedArgs");
 			datalist.addOption(key);
 		}
 	}
@@ -401,7 +404,7 @@ export class CommandView extends WorkView {
 	/**
 	 */
 	deleteArgChoice() {
-		let key = this.elem.tfNamedArgs.value.trim();
+		const key = this.elem.tfNamedArgs.value.trim();
 
 		if (this.namedArgs[key]) {
 			WbApp.confirm({
@@ -409,7 +412,7 @@ export class CommandView extends WorkView {
 			}, (val) => {
 				if (val) {
 					delete this.namedArgs[key];
-					let dataListObj = this.getDataListObjFor("tfNamedArgs");
+					const dataListObj = this.getDataListObjFor("tfNamedArgs");
 					dataListObj.removeOption(key);
 					this.clearArgChoice();
 				}
@@ -420,7 +423,7 @@ export class CommandView extends WorkView {
 	/**
 	 */
 	saveOutput() {
-		let fileName = "output_" + (this.commandDef.command + "_" + this.commandDef.script).replaceAll("/", "_") + ".txt";
+		const fileName = "output_" + (this.commandDef.command + "_" + this.commandDef.script).replaceAll("/", "_") + ".txt";
 		this.saveToFile(fileName, this.elem.taOutput.value.trim());
 	}
 
@@ -431,18 +434,18 @@ export class CommandView extends WorkView {
 	}
 
 	expandOutput() {
-		let props = this.outputProps;
+		const props = this.outputProps;
 		props.steps = ++props.steps;
-		let height = (props.steps * props.hstep).toString() + "vh";
+		const height = (props.steps * props.hstep).toString() + "vh";
 		this.elem.taOutput.style.height = height;
 	}
 
 	reduceOutput() {
-		let props = this.outputProps;
+		const props = this.outputProps;
 		props.steps = props.steps > 0 ? --props.steps : 0;
 
 		if (props.steps > 0) {
-			let height = (props.steps * props.hstep).toString() + "vh";
+			const height = (props.steps * props.hstep).toString() + "vh";
 			this.elem.taOutput.style.height = height;
 		} else {
 			this.elem.taOutput.style.height = props.initHeight;
@@ -453,14 +456,14 @@ export class CommandView extends WorkView {
 
 //export this view component as individual instances
 //the view will get specified by the id and a CommandDef data object
-let instances = new Map();
+const instances = new Map();
 export function getView(args) {
-	let id = args[0];
-	let def = args[1];
+	const id = args[0];
+	const def = args[1];
 	if (instances.has(id)) {
 		return instances.get(id);
 	} else {
-		let view = new CommandView(id, def);
+		const view = new CommandView(id, def);
 		instances.set(id, view);
 		if (args[2] instanceof LazyFunction) {
 			view.viewExtender = args[2];

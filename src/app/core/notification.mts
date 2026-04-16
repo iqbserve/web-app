@@ -1,20 +1,23 @@
 /* Authored by iqbserve.de */
 
+/* Types */
+export type NotificationListener = (msg: Notification) => void;
+
 /**
  */
 export class NotificationHandler {
 
-    #listeners = new Set<(msg: Notification) => void>();
+    #listeners = new Set<NotificationListener>();
 
     constructor() {
     }
 
-    subscribe(cb: (msg: Notification) => void) {
+    subscribe(cb: NotificationListener) {
         this.#listeners.add(cb);
         return () => this.#listeners.delete(cb);
     }
 
-    unsubscribe(cb: (msg: Notification) => void) {
+    unsubscribe(cb: NotificationListener) {
         this.#listeners.delete(cb);
     }
 
@@ -27,9 +30,9 @@ export class NotificationHandler {
  */
 export class Notification {
     type: string;
-    value: any;
+    value: unknown;
 
-    constructor(type: string, value: any) {
+    constructor(type: string, value: unknown) {
         this.type = type;
         this.value = value;
     }
