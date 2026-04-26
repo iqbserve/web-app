@@ -820,7 +820,7 @@ Furthermore a run method can be defined
 
 	newModule: `
 // startup snippet
-// import { echo } from "features/playground.mjs";
+// import { echo } from "features/js-playground.mjs";
 //
 // export const main = (args, attachments) => {
 //     echo("New ModuleScript");

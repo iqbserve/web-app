@@ -100,7 +100,7 @@ class DbConnectionsView extends WorkView {
 			.style({ "margin-bottom": "10px" })
 			.addLabelTextField(
 				{ text: "Name:" }, { varid: "tfConnectionName", datalist: Object.getOwnPropertyNames(this.connections) }, (label, connectionName) => {
-					connectionName.style({ placeholder: "connection name", width: "250px" });
+					connectionName.attrib({ placeholder: "connection name" }).style({ width: "250px" });
 					onInput(connectionName, (evt) => {
 						this.switchCurrentConnection(evt.currentTarget.value);
 					});

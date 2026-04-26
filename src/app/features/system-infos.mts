@@ -3,7 +3,7 @@
 import { Logger } from 'core/logging.mjs';
 import { typeUtil } from 'core/tools.mjs';
 import { WorkView, WorkViewTableHandler, TableData } from 'core/view-classes.mjs';
-import { UIBuilder, onClicked, onKeyup, KEY } from 'core/uibuilder.mjs';
+import { UIBuilder, onClicked, onKeyup, KEY, UIComp } from 'core/uibuilder.mjs';
 import { WorkViewHtml } from 'core/view-templates.mjs';
 import * as Icons from 'core/icons.mjs';
 import * as Webapi from 'app/core/webapi.mjs';
@@ -121,7 +121,7 @@ class SystemInfoView extends WorkView {
 	 */
 	initConfigBox(builder) {
 
-		let fieldset;
+		let fieldset: UIComp;
 		builder.setElementCollection(this.configBoxElem);
 
 		builder.newUICompFor(this.leftContainer)
@@ -152,7 +152,7 @@ class SystemInfoView extends WorkView {
 				});
 		});
 
-		fieldset.addFromHtml(this.reworkHtml(tableHtml), (elems) => {
+		fieldset.addFromHtml(this.reworkHtml(tableHtml), (elems: Element[]) => {
 			const tableElem = elems[0].firstElementChild;
 			this.configTable = new WorkViewTableHandler(tableElem);
 		});

@@ -37,6 +37,26 @@ export type ESModule = {
 }
 
 /**
+ * Function arguments.
+ */
+export type FncArgs = {
+    [index: number]: unknown;
+}
+
+/**
+ * Dynamic function methods expect a callback receiving the result of the invocation.
+ * @see LazyFunction
+ */
+export interface DynamicFunction {
+    invoke(cb: (retVal: unknown) => void): void;
+}
+
+/**
+ * Extender functions expect a callback receiving the object to extend.
+ */
+export type ExtenderFunction<T> = (obj: T) => void;
+
+/**
  * User profile.
  */
 export type UserProfile = {

@@ -56,7 +56,7 @@ export function installApp(rootId: string) {
 /**
  * The workbench public function interface
  */
-export const WorkbenchInterface = {
+export const WorkbenchInterface = Object.freeze({
 
 	confirm: (msg: DialogMessage, cb: (value: boolean) => void) => {
 		viewManager.promptConfirmation(msg, cb);
@@ -96,7 +96,7 @@ export const WorkbenchInterface = {
 		}
 		return null;
 	}
-};
+});
 
 /**
  */

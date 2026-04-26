@@ -19,6 +19,8 @@
     "typescript-eslint": "^8.58.1"
   },
   "scripts": {
-    "build": "tsc && node copy-assets.mjs"
+    "build": "tsc && node copy-assets.mjs",
+    "lint": "npx eslint",
+    "cp": "node copy-assets.mjs cp"
   }
 }

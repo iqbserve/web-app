@@ -1,5 +1,8 @@
 /* Authored by iqbserve.de */
 
+/* Types */
+import type { JSObject } from "types/commons";
+
 /**
  * Some simple data classes.
  */
@@ -53,13 +56,17 @@ export class CommandDef {
 	title = "";
 	command = "";
 	script = "";
-	options = { args: false }
+	options: JSObject = { args: false };
 
-	constructor(title: string, command: string, script: string, opt = {}) {
+	constructor(title: string, command: string, script: string) {
 		this.title = title;
 		this.command = command;
 		this.script = script;
-		this.options = { ...this.options, ...opt };
+	}
+
+	setOption(key: string, value: unknown) {
+		this.options[key] = value;
+		return this;
 	}
 }
 

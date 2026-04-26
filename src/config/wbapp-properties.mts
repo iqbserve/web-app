@@ -16,7 +16,7 @@ class Properties {
         webServiceUrlRoot: "/webapi",
         webSocketUrlRoot: "/wsoapi",
         webBackendServerUrl: "",
-        webAuthenticationEnabled: true,
+        webAuthenticationEnabled: false,
 
         systemInfo: {},
         vcUrls: {

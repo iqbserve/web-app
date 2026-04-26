@@ -4,6 +4,9 @@ import { Logger } from 'core/logging.mjs';
 import { WbProperties } from 'config/wbapp-properties.mjs';
 import { DataFile } from './data-classes.mjs';
 
+/* Types */
+import type { DynamicFunction, FncArgs } from 'types/commons';
+
 /**
  * Some helper functions and constants
  */
@@ -14,21 +17,23 @@ export const NL = "\n";
  * Object to define functions
  * that get lazily resolved at the first call
  */
-export class LazyFunction {
+export class LazyFunction implements DynamicFunction {
 	#moduleName = "";
 	#functionName = "";
 	#functionArgs = null;
 	#returnOnly = false;
 
-	constructor(module: string, fncName: string, fncArgs: unknown[] = null) {
+	constructor(module: string, fncName: string, fncArgs: FncArgs = null) {
 		this.#moduleName = module;
 		this.#functionName = fncName;
 		this.#functionArgs = fncArgs;
 	}
 
-	setToFunctionReturnMode(): LazyFunction {
-		//do not call the function
-		//just return it
+	/**
+	 * Set to return function mode.
+	 * Do not call but return the function on invocation.
+	 */
+	setReturnFunctionMode(): LazyFunction {
 		this.#returnOnly = true;
 		return this;
 	}
@@ -38,10 +43,13 @@ export class LazyFunction {
 			.then((module) => {
 				let retVal: unknown;
 				if (this.#returnOnly) {
+					//return the function
 					retVal = module[this.#functionName]
 				} else if (this.#functionArgs) {
+					//call the function with arguments
 					retVal = module[this.#functionName](this.#functionArgs);
 				} else {
+					//call the function without arguments
 					retVal = module[this.#functionName]();
 				}
 				cb(retVal);

@@ -18,7 +18,7 @@ export type UICompCb = (comp: UIComp, comp2?: UIComp) => void;
 
 /**
  */
-export function newUIId(prefix = null) {
+export function newUIId(prefix = "") {
     const id = Math.random().toString(32).slice(5);
     return prefix ? prefix + "-" + id : id;
 }
@@ -46,7 +46,7 @@ export function reworkHtmlElementIds(html: string, contextIdVal: string, ignoreL
 export class ContextId {
     #uid = newUIId();
 
-    get(prefix = null) {
+    get(prefix = "") {
         return prefix ? prefix + "-" + this.#uid : this.#uid;
     }
 }
@@ -344,7 +344,7 @@ export class UIComp {
      * is retained
      */
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    resolveArgs(argDef: any, argCb: any, resultCb: any) {
+    resolveArgs(argDef: any, argCb: any, resultCb: (def: UICompDef, cb?: UICompCb) => void) {
         if (typeUtil.isFunction(argDef)) {
             argCb = argDef;
             argDef = {};
@@ -565,7 +565,7 @@ export class UIComp {
         return this;
     }
 
-    add(def: string | UICompDef, cb: UICompCb = null) {
+    add(def: string | UICompDef, cb?: UICompCb) {
         this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
 
         const comp = this.addNewCompImpl(def as UICompDef);
@@ -573,11 +573,11 @@ export class UIComp {
         return this.finishAdd(def as UICompDef, comp);
     }
 
-    addFromHtml(html, cb = null) {
+    addFromHtml(html: string, cb: (elements: Element[]) => void = null) {
         const template = document.createElement("template");
         template.innerHTML = html;
 
-        const elements = [...template.content.childNodes].filter(n => n.nodeType === Node.ELEMENT_NODE);
+        const elements = [...template.content.childNodes].filter(n => n.nodeType === Node.ELEMENT_NODE) as Element[];
         for (const element of elements) {
             this.domElem.append(element);
         }
@@ -585,22 +585,22 @@ export class UIComp {
         return this;
     }
 
-    addContainer(def: UICompDef, cb: UICompCb = null) {
+    addContainer(def: UICompDef, cb?: UICompCb) {
         this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
         return this.addContainerImpl("container", def, cb);
     }
 
-    addColContainer(def: UICompDef, cb: UICompCb = null) {
+    addColContainer(def: UICompDef, cb?: UICompCb) {
         this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
         return this.addContainerImpl("colContainer", def, cb);
     }
 
-    addRowContainer(def: UICompDef, cb: UICompCb = null) {
+    addRowContainer(def: UICompDef, cb?: UICompCb) {
         this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
         return this.addContainerImpl("rowContainer", def, cb);
     }
 
-    addDiv(def: UICompDef, cb: UICompCb = null) {
+    addDiv(def: UICompDef, cb?: UICompCb) {
         this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
         def.elemType = "div";
         def.typeId = "div";
@@ -610,7 +610,7 @@ export class UIComp {
         return this.finishAdd(def, comp);
     }
 
-    addSpan(def: UICompDef, cb: UICompCb = null) {
+    addSpan(def: UICompDef, cb?: UICompCb) {
         this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
         def.elemType = "span";
         def.typeId = "span";
@@ -620,7 +620,7 @@ export class UIComp {
         return this.finishAdd(def, comp);
     }
 
-    addSeparator(def: UICompDef, cb: UICompCb = null) {
+    addSeparator(def: UICompDef, cb?: UICompCb) {
         this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
         def.elemType = "hr";
         def.typeId = "hr";
@@ -630,7 +630,7 @@ export class UIComp {
         return this.finishAdd(def, comp);
     }
 
-    addList(def: UICompDef, cb: UICompCb = null) {
+    addList(def: UICompDef, cb?: UICompCb) {
         this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
         def.elemType = def.elemType || "ul";
         def.typeId = "list";
@@ -640,7 +640,7 @@ export class UIComp {
         return this.finishAdd(def, comp);
     }
 
-    addLink(def: UICompDef, cb: UICompCb = null) {
+    addLink(def: UICompDef, cb?: UICompCb) {
         this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
         def.elemType = "a";
         def.typeId = "link";
@@ -652,7 +652,7 @@ export class UIComp {
         return this.finishAdd(def, comp);
     }
 
-    addFontIconImpl(type: string, def: UICompDef, cb: UICompCb = null) {
+    addFontIconImpl(type: string, def: UICompDef, cb?: UICompCb) {
         def.elemType = "a-icon";
         def.typeId = type;
 
@@ -665,17 +665,17 @@ export class UIComp {
         return this.finishAdd(def, comp);
     }
 
-    addActionIcon(def: UICompDef, cb: UICompCb = null) {
+    addActionIcon(def: UICompDef, cb?: UICompCb) {
         this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
         return this.addFontIconImpl("actionIcon", def, cb);
     }
 
-    addFontIcon(def: UICompDef, cb: UICompCb = null) {
+    addFontIcon(def: UICompDef, cb?: UICompCb) {
         this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
         return this.addFontIconImpl("fontIcon", def, cb);
     }
 
-    addFieldset(def: UICompDef, cb: UICompCb = null) {
+    addFieldset(def: UICompDef, cb?: UICompCb) {
         this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
         def.elemType = "fieldset";
         def.typeId = def.title ? "titledFieldset" : "fieldset";
@@ -691,7 +691,7 @@ export class UIComp {
         return this.finishAdd(def, comp);
     }
 
-    addGroup(def: UICompDef, cb: UICompCb = null) {
+    addGroup(def: UICompDef, cb?: UICompCb) {
         this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
         def.elemType = "fieldset";
         def.typeId = def.title ? "titledGroup" : "group";
@@ -707,7 +707,7 @@ export class UIComp {
         return this.finishAdd(def, comp);
     }
 
-    addLabel(def: UICompDef, cb: UICompCb = null) {
+    addLabel(def: UICompDef, cb?: UICompCb) {
         this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
         def.elemType = def.elemType || "label";
         def.typeId = def.typeId || "label";
@@ -722,7 +722,7 @@ export class UIComp {
         return this.finishAdd(def, comp);
     }
 
-    addCheckBox(def: UICompDef, cb: UICompCb = null) {
+    addCheckBox(def: UICompDef, cb?: UICompCb) {
         this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
         def.elemType = "input";
         def.typeId = "checkBox";
@@ -738,7 +738,7 @@ export class UIComp {
         return this.finishAdd(def, comp);
     }
 
-    addRadioButton(def: UICompDef, cb: UICompCb = null) {
+    addRadioButton(def: UICompDef, cb?: UICompCb) {
         this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
         def.elemType = "input";
         def.typeId = "radioButton";
@@ -754,7 +754,7 @@ export class UIComp {
         return this.finishAdd(def, comp);
     }
 
-    addTextField(def: UICompDef, cb: UICompCb = null) {
+    addTextField(def: UICompDef, cb?: UICompCb) {
         this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
         def.elemType = "input";
         def.typeId = "textField";
@@ -777,7 +777,7 @@ export class UIComp {
         return this.finishAdd(def, comp);
     }
 
-    addButton(def: UICompDef, cb: UICompCb = null) {
+    addButton(def: UICompDef, cb?: UICompCb) {
         this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
         def.elemType = "button";
         def.typeId = def.typeId == "button" || def.typeId == "tabButton" ? def.typeId : "button";
@@ -798,14 +798,14 @@ export class UIComp {
         return this.finishAdd(def, comp);
     }
 
-    addTabButton(def: UICompDef, cb: UICompCb = null) {
+    addTabButton(def: UICompDef, cb?: UICompCb) {
         this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
         def.elemType = "button";
         def.typeId = "tabButton";
         return this.addButton(def, cb);
     }
 
-    addTextArea(def: UICompDef, cb: UICompCb = null) {
+    addTextArea(def: UICompDef, cb?: UICompCb) {
         this.resolveArgs(def, cb, (resDef, resCb) => { def = resDef; cb = resCb; });
         def.elemType = "textarea";
         def.typeId = "textArea";
@@ -823,7 +823,7 @@ export class UIComp {
         return this.finishAdd(def, comp);
     }
 
-    addLabelTextField(labelDef: UICompDef, fieldDef: UICompDef, cb: UICompCb = null) {
+    addLabelTextField(labelDef: UICompDef, fieldDef: UICompDef, cb?: UICompCb) {
         this.resolveArgs(labelDef, cb, (resDef, resCb) => { labelDef = resDef; cb = resCb; });
         this.resolveArgs(fieldDef, cb, (resDef, resCb) => { fieldDef = resDef; cb = resCb; });
 
@@ -837,7 +837,7 @@ export class UIComp {
         return this;
     }
 
-    addLabelTextArea(labelDef: UICompDef, areaDef: UICompDef, cb: UICompCb = null) {
+    addLabelTextArea(labelDef: UICompDef, areaDef: UICompDef, cb?: UICompCb) {
         this.resolveArgs(labelDef, cb, (resDef, resCb) => { labelDef = resDef; cb = resCb; });
         this.resolveArgs(areaDef, cb, (resDef, resCb) => { areaDef = resDef; cb = resCb; });
 
@@ -851,7 +851,7 @@ export class UIComp {
         return this;
     }
 
-    addLabelButton(labelDef: UICompDef, buttonDef: UICompDef, cb: UICompCb = null) {
+    addLabelButton(labelDef: UICompDef, buttonDef: UICompDef, cb?: UICompCb) {
         this.resolveArgs(labelDef, cb, (resDef, resCb) => { labelDef = resDef; cb = resCb; });
         this.resolveArgs(buttonDef, cb, (resDef, resCb) => { buttonDef = resDef; cb = resCb; });
 

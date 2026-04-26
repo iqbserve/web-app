@@ -1,6 +1,6 @@
 /* Authored by iqbserve.de */
 
-import { NL, newSimpleId, asDurationString, FileDataReader, LazyFunction } from 'core/tools.mjs';
+import { NL, newSimpleId, asDurationString, FileDataReader } from 'core/tools.mjs';
 import { WsoCommonMessage, CommandDef, DataFile } from 'core/data-classes.mjs';
 import { WorkView, AttachmentHandler } from 'core/view-classes.mjs';
 import { UIBuilder, onClicked, onInput, onKeydown, KEY } from 'core/uibuilder.mjs';
@@ -10,7 +10,7 @@ import * as Icons from 'core/icons.mjs';
 import { WorkbenchInterface as WbApp } from 'app/workbench.mjs';
 
 /* Types */
-import type { JSObject } from 'types/commons';
+import type { DynamicFunction, ExtenderFunction, FncArgs, JSObject } from 'types/commons';
 
 /**
  * A general View class for server side commands.
@@ -48,14 +48,16 @@ export class CommandView extends WorkView {
 
 	outputProps = { initWidth: "1000px", initHeight: "300px", hstep: 50, steps: 0 };
 
-	//functional interface to extend a the general command view
-	viewExtender;
+	//function to extend this general command view
+	//with feature specifics
+	viewExtender: DynamicFunction;
 
-	constructor(id, cmdDef) {
+	constructor(id: string, cmdDef: CommandDef, viewExtender: DynamicFunction = null) {
 		super(id, null);
 		this.commandDef = cmdDef;
 		this.commandName = this.commandDef.command + " " + this.commandDef.script;
 		this.viewSource.setHtml(WorkViewHtml());
+		this.viewExtender = viewExtender;
 	}
 
 	initialize() {
@@ -83,9 +85,10 @@ export class CommandView extends WorkView {
 
 		this.createWsoConnection();
 
-		this.viewExtender?.invoke((doExtend) => {
-			doExtend(this);
-		});
+		//extend the view with feature specifics
+		this.viewExtender?.invoke((extend: ExtenderFunction<CommandView>) =>
+			extend(this)
+		);
 
 		this.isInitialized = true;
 		this.setVisible(true);
@@ -456,18 +459,16 @@ export class CommandView extends WorkView {
 
 //export this view component as individual instances
 //the view will get specified by the id and a CommandDef data object
-const instances = new Map();
-export function getView(args) {
-	const id = args[0];
-	const def = args[1];
+const instances = new Map<string, CommandView>();
+
+export function getView(args: FncArgs): CommandView {
+	const id: string = args[0] as string;
+	const def: CommandDef = args[1] as CommandDef;
 	if (instances.has(id)) {
 		return instances.get(id);
 	} else {
-		const view = new CommandView(id, def);
+		const view = new CommandView(id, def, args?.[2] as DynamicFunction);
 		instances.set(id, view);
-		if (args[2] instanceof LazyFunction) {
-			view.viewExtender = args[2];
-		}
 		return view;
 	}
 }
